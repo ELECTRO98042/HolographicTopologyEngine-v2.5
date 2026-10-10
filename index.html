@@ -44,7 +44,10 @@
             camera: {
                 rotX: 0.3,
                 rotY: 0.4,
-                baseScale: 180
+                baseScale: 180,
+                isPanning: false,
+                lastMouseX: 0,
+                lastMouseY: 0
             },
             params: {
                 curvatureK: 0.0,
@@ -54,6 +57,68 @@
             nodes: [],
             bonds: []
         };
+
+        // === [BLOCK: MODULE_MATHEMATICS_PROJECTION] ===
+        function project3D(x, y, z) {
+            const radX = SimulationState.camera.rotX;
+            const radY = SimulationState.camera.rotY;
+
+            // Rotate around Y axis
+            const cosY = Math.cos(radY), sinY = Math.sin(radY);
+            const x1 = x * cosY - z * sinY;
+            const z1 = x * sinY + z * cosY;
+
+            // Rotate around X axis
+            const cosX = Math.cos(radX), sinX = Math.sin(radX);
+            const y2 = y * cosX - z1 * sinX;
+            const z2 = y * sinX + z1 * cosX;
+
+            const distance = 8.0;
+            const focalLength = SimulationState.camera.baseScale;
+            const scale = focalLength / (distance + z2);
+
+            return {
+                px: canvas.width / 2 + x1 * scale,
+                py: canvas.height / 2 + y2 * scale,
+                scale: scale,
+                depth: z2
+            };
+        }
+
+        // === [BLOCK: MODULE_PHYSICS_MANIFOLD] ===
+        function createNode(x, y, z) {
+            return {
+                x: x, y: y, z: z,
+                baseRadius: 12,
+                vx: (Math.random() - 0.5) * 0.05,
+                vy: (Math.random() - 0.5) * 0.05,
+                vz: (Math.random() - 0.5) * 0.05,
+                update: function(kCurvature, driftSpeed) {
+                    const distFromOrigin = Math.hypot(this.x, this.y, this.z) || 1;
+                    if (kCurvature !== 0) {
+                        const pullFactor = (kCurvature * 0.015) / (distFromOrigin * 0.05);
+                        this.vx -= (this.x / distFromOrigin) * pullFactor;
+                        this.vy -= (this.y / distFromOrigin) * pullFactor;
+                        this.vz -= (this.z / distFromOrigin) * pullFactor;
+                    }
+                    
+                    this.x += this.vx * driftSpeed;
+                    this.y += this.vy * driftSpeed;
+                    this.z += this.vz * driftSpeed;
+
+                    // Boundary manifold reflection
+                    const maxR = SimulationState.params.maxBoundaryRadius;
+                    if (distFromOrigin > maxR) {
+                        this.x = (this.x / distFromOrigin) * maxR;
+                        this.y = (this.y / distFromOrigin) * maxR;
+                        this.z = (this.z / distFromOrigin) * maxR;
+                        this.vx *= -0.4;
+                        this.vy *= -0.4;
+                        this.vz *= -0.4;
+                    }
+                }
+            };
+        }
 
         // === [BLOCK: INITIALIZATION] ===
         const canvas = document.getElementById('simCanvas');
@@ -65,6 +130,15 @@
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
+
+        // Seed initial test nodes
+        for(let i=0; i<15; i++) {
+            SimulationState.nodes.push(createNode(
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 4
+            ));
+        }
 
         // === [BLOCK: RENDER_LOOP] ===
         let lastTime = performance.now();
@@ -78,6 +152,20 @@
             // Clear frame
             ctx.fillStyle = '#060810';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update & Render Nodes
+            const k = SimulationState.params.curvatureK;
+            const drift = SimulationState.params.driftSpeed;
+
+            SimulationState.nodes.forEach(node => {
+                node.update(k, drift);
+                const proj = project3D(node.x, node.y, node.z);
+
+                ctx.beginPath();
+                ctx.arc(proj.px, proj.py, Math.max(2, node.baseRadius * proj.scale * 0.15), 0, Math.PI * 2);
+                ctx.fillStyle = '#38bdf8';
+                ctx.fill();
+            });
 
             requestAnimationFrame(mainLoop);
         }
