@@ -10,6 +10,7 @@
             color: #38bdf8;
             font-family: monospace;
             overflow: hidden;
+            user-select: none;
         }
         canvas {
             display: block;
@@ -51,11 +52,16 @@
             },
             params: {
                 curvatureK: 0.0,
-                driftSpeed: 0.5,
+                driftSpeed: 0.2,
                 maxBoundaryRadius: 4.2
             },
             nodes: [],
-            bonds: []
+            bonds: [],
+            interaction: {
+                selectedNode: null,
+                dragStartNode: null,
+                isShiftDragging: false
+            }
         };
 
         // === [BLOCK: MODULE_MATHEMATICS_PROJECTION] ===
@@ -63,12 +69,10 @@
             const radX = SimulationState.camera.rotX;
             const radY = SimulationState.camera.rotY;
 
-            // Rotate around Y axis
             const cosY = Math.cos(radY), sinY = Math.sin(radY);
             const x1 = x * cosY - z * sinY;
             const z1 = x * sinY + z * cosY;
 
-            // Rotate around X axis
             const cosX = Math.cos(radX), sinX = Math.sin(radX);
             const y2 = y * cosX - z1 * sinX;
             const z2 = y * sinX + z1 * cosX;
@@ -85,14 +89,36 @@
             };
         }
 
+        function unproject3D(screenX, screenY, targetZ = 0) {
+            const distance = 8.0;
+            const focalLength = SimulationState.camera.baseScale;
+            const scale = focalLength / (distance + targetZ);
+
+            const x1 = (screenX - canvas.width / 2) / scale;
+            const y2 = (screenY - canvas.height / 2) / scale;
+
+            const radX = SimulationState.camera.rotX;
+            const radY = SimulationState.camera.rotY;
+
+            const cosX = Math.cos(-radX), sinX = Math.sin(-radX);
+            const y1 = y2 * cosX - targetZ * sinX;
+            const z1 = y2 * sinX + targetZ * cosX;
+
+            const cosY = Math.cos(-radY), sinY = Math.sin(-radY);
+            const x = x1 * cosY - z1 * sinY;
+            const z = x1 * sinY + z1 * cosY;
+
+            return { x, y: y1, z };
+        }
+
         // === [BLOCK: MODULE_PHYSICS_MANIFOLD] ===
         function createNode(x, y, z) {
             return {
                 x: x, y: y, z: z,
-                baseRadius: 12,
-                vx: (Math.random() - 0.5) * 0.05,
-                vy: (Math.random() - 0.5) * 0.05,
-                vz: (Math.random() - 0.5) * 0.05,
+                baseRadius: 3, // Drastically reduced base size
+                vx: (Math.random() - 0.5) * 0.02,
+                vy: (Math.random() - 0.5) * 0.02,
+                vz: (Math.random() - 0.5) * 0.02,
                 update: function(kCurvature, driftSpeed) {
                     const distFromOrigin = Math.hypot(this.x, this.y, this.z) || 1;
                     if (kCurvature !== 0) {
@@ -106,7 +132,6 @@
                     this.y += this.vy * driftSpeed;
                     this.z += this.vz * driftSpeed;
 
-                    // Boundary manifold reflection
                     const maxR = SimulationState.params.maxBoundaryRadius;
                     if (distFromOrigin > maxR) {
                         this.x = (this.x / distFromOrigin) * maxR;
@@ -131,14 +156,101 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Seed initial test nodes
         for(let i=0; i<15; i++) {
             SimulationState.nodes.push(createNode(
-                (Math.random() - 0.5) * 4,
-                (Math.random() - 0.5) * 4,
-                (Math.random() - 0.5) * 4
+                (Math.random() - 0.5) * 3,
+                (Math.random() - 0.5) * 3,
+                (Math.random() - 0.5) * 3
             ));
         }
+
+        // === [BLOCK: MODULE_INPUT_INTERACTION] ===
+        let isMouseDown = false;
+        let hasDragged = false;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            hasDragged = false;
+            SimulationState.camera.lastMouseX = e.clientX;
+            SimulationState.camera.lastMouseY = e.clientY;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let clickedNode = null;
+            SimulationState.nodes.forEach(node => {
+                const proj = project3D(node.x, node.y, node.z);
+                const r = Math.max(2, node.baseRadius * proj.scale * 0.05);
+                if (Math.hypot(mouseX - proj.px, mouseY - proj.py) < r + 4) {
+                    clickedNode = node;
+                }
+            });
+
+            if (clickedNode && e.shiftKey) {
+                SimulationState.interaction.dragStartNode = clickedNode;
+                SimulationState.interaction.isShiftDragging = true;
+            } else {
+                SimulationState.interaction.selectedNode = clickedNode;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            const dx = e.clientX - SimulationState.camera.lastMouseX;
+            const dy = e.clientY - SimulationState.camera.lastMouseY;
+
+            if (Math.hypot(dx, dy) > 2) {
+                hasDragged = true;
+            }
+
+            if (SimulationState.interaction.isShiftDragging) return;
+
+            if (hasDragged && !SimulationState.interaction.selectedNode) {
+                SimulationState.camera.rotY += dx * 0.005;
+                SimulationState.camera.rotX += dy * 0.005;
+            }
+
+            SimulationState.camera.lastMouseX = e.clientX;
+            SimulationState.camera.lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (!hasDragged && !SimulationState.interaction.selectedNode && !SimulationState.interaction.isShiftDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                const worldPos = unproject3D(clickX, clickY, 0);
+                SimulationState.nodes.push(createNode(worldPos.x, worldPos.y, worldPos.z));
+            }
+
+            if (SimulationState.interaction.isShiftDragging && SimulationState.interaction.dragStartNode) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                let targetNode = null;
+                SimulationState.nodes.forEach(node => {
+                    const proj = project3D(node.x, node.y, node.z);
+                    const r = Math.max(2, node.baseRadius * proj.scale * 0.05);
+                    if (Math.hypot(mouseX - proj.px, mouseY - proj.py) < r + 4) {
+                        targetNode = node;
+                    }
+                });
+
+                if (targetNode && targetNode !== SimulationState.interaction.dragStartNode) {
+                    SimulationState.bonds.push({
+                        from: SimulationState.interaction.dragStartNode,
+                        to: targetNode
+                    });
+                }
+            }
+
+            isMouseDown = false;
+            SimulationState.interaction.isShiftDragging = false;
+            SimulationState.interaction.dragStartNode = null;
+        });
 
         // === [BLOCK: RENDER_LOOP] ===
         let lastTime = performance.now();
@@ -149,9 +261,20 @@
             document.getElementById('fps').innerText = SimulationState.fps;
             document.getElementById('node-count').innerText = SimulationState.nodes.length;
 
-            // Clear frame
             ctx.fillStyle = '#060810';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Bonds
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.lineWidth = 1;
+            SimulationState.bonds.forEach(b => {
+                const p1 = project3D(b.from.x, b.from.y, b.from.z);
+                const p2 = project3D(b.to.x, b.to.y, b.to.z);
+                ctx.beginPath();
+                ctx.moveTo(p1.px, p1.py);
+                ctx.lineTo(p2.px, p2.py);
+                ctx.stroke();
+            });
 
             // Update & Render Nodes
             const k = SimulationState.params.curvatureK;
@@ -162,7 +285,8 @@
                 const proj = project3D(node.x, node.y, node.z);
 
                 ctx.beginPath();
-                ctx.arc(proj.px, proj.py, Math.max(2, node.baseRadius * proj.scale * 0.15), 0, Math.PI * 2);
+                // Apply a strict multiplier (0.05) to keep nodes small and distinct
+                ctx.arc(proj.px, proj.py, Math.max(2, node.baseRadius * proj.scale * 0.05), 0, Math.PI * 2);
                 ctx.fillStyle = '#38bdf8';
                 ctx.fill();
             });
