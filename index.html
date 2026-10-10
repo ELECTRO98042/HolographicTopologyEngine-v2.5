@@ -112,13 +112,13 @@
     <div class="sidebar">
         <h2>Holographic Topology 3D</h2>
         <div class="instruction-box">
-            • Click + Drag to Orbit/Rotate 3D Point-Cloud
+            • Drag & Drop JSON here or Click Canvas to Inject Nodes
         </div>
         <div class="telemetry-text">
             <b>Left Click Canvas:</b> Inject 3D Node<br>
             <b>Left Click Node:</b> Inspect Telemetry<br>
             <b>Right Click Node:</b> Sever Node (3D Interference Pulse)<br>
-            Network Integrity: <span style="color: #38bdf8;">100%</span><br>
+            Network Integrity: <span style="color: #38bdf8;" id="integrity-val">100%</span><br>
             Entanglement S(EE): <span id="s-ee">7.42</span><br>
             Integrated Info (&Phi;): <span id="phi-val">0.56</span>
         </div>
@@ -130,6 +130,8 @@
             <button id="btnImportJSON">Import JSON</button>
             <button id="btnResetView" class="full-width">Reset View & Topology</button>
         </div>
+
+        <input type="file" id="importFileInput" accept=".json" style="display: none;">
 
         <div class="control-group">
             <label>Observer Lens</label>
@@ -288,6 +290,7 @@
         const driftLbl = document.getElementById('drift-lbl');
         const pulseLbl = document.getElementById('pulse-lbl');
         const simModeSelect = document.getElementById('simMode');
+        const importFileInput = document.getElementById('importFileInput');
 
         rangeSlider.addEventListener('input', (e) => {
             SimulationState.params.entanglementRange = parseFloat(e.target.value);
@@ -363,17 +366,74 @@
             dlAnchor.click();
         });
 
+        document.getElementById('btnImportJSON').addEventListener('click', () => {
+            importFileInput.click();
+        });
+
+        function handleImportedData(jsonText) {
+            try {
+                const imported = JSON.parse(jsonText);
+                if (imported.nodes && Array.isArray(imported.nodes)) {
+                    SimulationState.nodes = imported.nodes.map(n => {
+                        let x = n.x, y = n.y, z = n.z || 0;
+                        // Normalize pixel-space coordinates from older exports if necessary
+                        if (Math.abs(x) > 10 || Math.abs(y) > 10) {
+                            x = (x - canvas.width / 2) / (SimulationState.camera.baseScale || 220);
+                            y = (y - canvas.height / 2) / (SimulationState.camera.baseScale || 220);
+                            z = z > 10 ? (z / 100) : z;
+                        }
+                        const node = createNode(x, y, z);
+                        node.vx = n.vx || node.vx;
+                        node.vy = n.vy || node.vy;
+                        node.vz = n.vz || node.vz;
+                        return node;
+                    });
+                    SimulationState.bonds = [];
+                    if (imported.params) {
+                        SimulationState.params = imported.params;
+                        rangeSlider.value = SimulationState.params.entanglementRange || 220;
+                        rangeLbl.innerText = SimulationState.params.entanglementRange || 220;
+                        driftSlider.value = SimulationState.params.driftSpeed || 0.8;
+                        driftLbl.innerText = (SimulationState.params.driftSpeed || 0.8).toFixed(2);
+                        pulseSlider.value = SimulationState.params.pulseSpeed || 5;
+                        pulseLbl.innerText = SimulationState.params.pulseSpeed || 5;
+                        SimulationState.camera.baseScale = SimulationState.params.entanglementRange || 220;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to parse imported JSON", err);
+            }
+        }
+
+        importFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => handleImportedData(event.target.result);
+            reader.readAsText(file);
+            importFileInput.value = '';
+        });
+
+        // Prevent default drag-and-drop browser behavior and handle drops
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => handleImportedData(event.target.result);
+            reader.readAsText(file);
+        });
+
         // === [BLOCK: MODULE_INPUT_INTERACTION] ===
         let isMouseDown = false;
         let hasDragged = false;
 
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
         canvas.addEventListener('mousedown', (e) => {
             if (e.target !== canvas) return;
-            isMouseDown = true;
-            hasDragged = false;
-            SimulationState.camera.lastMouseX = e.clientX;
-            SimulationState.camera.lastMouseY = e.clientY;
-
+            
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
@@ -386,6 +446,17 @@
                     clickedNode = node;
                 }
             });
+
+            if (e.button === 2 && clickedNode) {
+                SimulationState.nodes = SimulationState.nodes.filter(n => n !== clickedNode);
+                SimulationState.bonds = SimulationState.bonds.filter(b => b.from !== clickedNode && b.to !== clickedNode);
+                return;
+            }
+
+            isMouseDown = true;
+            hasDragged = false;
+            SimulationState.camera.lastMouseX = e.clientX;
+            SimulationState.camera.lastMouseY = e.clientY;
 
             if (clickedNode && e.shiftKey) {
                 SimulationState.interaction.dragStartNode = clickedNode;
@@ -417,6 +488,8 @@
 
         window.addEventListener('mouseup', (e) => {
             if (!isMouseDown) return;
+            if (e.button === 2) return;
+
             if (!hasDragged && !SimulationState.interaction.selectedNode && !SimulationState.interaction.isShiftDragging) {
                 const rect = canvas.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
