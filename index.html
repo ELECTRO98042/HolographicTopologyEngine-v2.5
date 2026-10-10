@@ -62,6 +62,14 @@
             font-size: 11px;
             line-height: 1.6;
         }
+        .node-inspect-box {
+            background: rgba(56, 189, 248, 0.05);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #cbd5e1;
+        }
         .btn-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -112,15 +120,21 @@
     <div class="sidebar">
         <h2>Holographic Topology 3D</h2>
         <div class="instruction-box">
-            • Shift+Drag between Nodes to Entangle Bond
+            • Left Click Node to Inspect Telemetry
         </div>
         <div class="telemetry-text">
             <b>Left Click Canvas:</b> Inject 3D Node<br>
-            <b>Left Click Node:</b> Inspect Telemetry<br>
             <b>Right Click Node:</b> Sever Node (3D Interference Pulse)<br>
             Network Integrity: <span style="color: #38bdf8;" id="integrity-val">100%</span><br>
             Entanglement S(EE): <span id="s-ee">7.42</span><br>
             Integrated Info (&Phi;): <span id="phi-val">0.56</span>
+        </div>
+
+        <div id="nodeInspectContainer" class="node-inspect-box" style="display: none;">
+            <b>SELECTED NODE TELEMETRY:</b><br>
+            ID: <span id="inspect-id">-</span><br>
+            Pos: (<span id="inspect-x">0</span>, <span id="inspect-y">0</span>, <span id="inspect-z">0</span>)<br>
+            Vel: (<span id="inspect-vx">0</span>, <span id="inspect-vy">0</span>, <span id="inspect-vz">0</span>)
         </div>
 
         <div class="btn-grid">
@@ -302,6 +316,15 @@
         const sEEVal = document.getElementById('s-ee');
         const phiVal = document.getElementById('phi-val');
 
+        const nodeInspectContainer = document.getElementById('nodeInspectContainer');
+        const inspectId = document.getElementById('inspect-id');
+        const inspectX = document.getElementById('inspect-x');
+        const inspectY = document.getElementById('inspect-y');
+        const inspectZ = document.getElementById('inspect-z');
+        const inspectVx = document.getElementById('inspect-vx');
+        const inspectVy = document.getElementById('inspect-vy');
+        const inspectVz = document.getElementById('inspect-vz');
+
         rangeSlider.addEventListener('input', (e) => {
             SimulationState.params.entanglementRange = parseFloat(e.target.value);
             rangeLbl.innerText = SimulationState.params.entanglementRange;
@@ -327,6 +350,8 @@
             SimulationState.camera.rotY = 0.4;
             SimulationState.nodes = [];
             SimulationState.bonds = [];
+            SimulationState.interaction.selectedNode = null;
+            nodeInspectContainer.style.display = 'none';
             for(let i=0; i<15; i++) {
                 SimulationState.nodes.push(createNode(
                     (Math.random() - 0.5) * 3,
@@ -431,6 +456,8 @@
                         pulseLbl.innerText = SimulationState.params.pulseSpeed || 5;
                         SimulationState.camera.baseScale = SimulationState.params.entanglementRange || 220;
                     }
+                    SimulationState.interaction.selectedNode = null;
+                    nodeInspectContainer.style.display = 'none';
                 }
             } catch (err) {
                 console.error("Failed to parse imported JSON", err);
@@ -480,6 +507,10 @@
 
             // Right click: Sever node
             if (e.button === 2 && clickedNode) {
+                if (SimulationState.interaction.selectedNode === clickedNode) {
+                    SimulationState.interaction.selectedNode = null;
+                    nodeInspectContainer.style.display = 'none';
+                }
                 SimulationState.nodes = SimulationState.nodes.filter(n => n !== clickedNode);
                 SimulationState.bonds = SimulationState.bonds.filter(b => b.from !== clickedNode && b.to !== clickedNode);
                 return;
@@ -495,6 +526,11 @@
                 SimulationState.interaction.isShiftDragging = true;
             } else {
                 SimulationState.interaction.selectedNode = clickedNode;
+                if (clickedNode) {
+                    nodeInspectContainer.style.display = 'block';
+                } else {
+                    nodeInspectContainer.style.display = 'none';
+                }
             }
         });
 
@@ -593,6 +629,22 @@
             sEEVal.innerText = SimulationState.telemetry.sEE;
             phiVal.innerText = SimulationState.telemetry.phi;
 
+            // Update Selected Node Inspection Telemetry Box if active
+            const selNode = SimulationState.interaction.selectedNode;
+            if (selNode && SimulationState.nodes.includes(selNode)) {
+                const idx = SimulationState.nodes.indexOf(selNode);
+                inspectId.innerText = `N-${String(idx).padStart(3, '0')}`;
+                inspectX.innerText = selNode.x.toFixed(2);
+                inspectY.innerText = selNode.y.toFixed(2);
+                inspectZ.innerText = selNode.z.toFixed(2);
+                inspectVx.innerText = selNode.vx.toFixed(3);
+                inspectVy.innerText = selNode.vy.toFixed(3);
+                inspectVz.innerText = selNode.vz.toFixed(3);
+            } else if (selNode) {
+                SimulationState.interaction.selectedNode = null;
+                nodeInspectContainer.style.display = 'none';
+            }
+
             ctx.fillStyle = '#060810';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -634,6 +686,14 @@
 
                 ctx.beginPath();
                 ctx.arc(proj.px, proj.py, Math.max(2, node.baseRadius * proj.scale * 0.05), 0, Math.PI * 2);
+                
+                // Highlight selected node with a distinct stroke ring
+                if (node === SimulationState.interaction.selectedNode) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
                 ctx.fillStyle = '#38bdf8';
                 ctx.fill();
             });
