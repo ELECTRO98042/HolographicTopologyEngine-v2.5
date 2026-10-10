@@ -120,11 +120,11 @@
     <div class="sidebar">
         <h2>Holographic Topology 3D</h2>
         <div class="instruction-box">
-            • Left Click Node to Inspect Telemetry
+            • Right Click Node to Sever via Interference Pulse
         </div>
         <div class="telemetry-text">
             <b>Left Click Canvas:</b> Inject 3D Node<br>
-            <b>Right Click Node:</b> Sever Node (3D Interference Pulse)<br>
+            <b>Left Click Node:</b> Inspect Telemetry<br>
             Network Integrity: <span style="color: #38bdf8;" id="integrity-val">100%</span><br>
             Entanglement S(EE): <span id="s-ee">7.42</span><br>
             Integrated Info (&Phi;): <span id="phi-val">0.56</span>
@@ -195,6 +195,7 @@
             },
             nodes: [],
             bonds: [],
+            pulses: [],
             telemetry: {
                 integrity: 100,
                 sEE: 7.42,
@@ -350,6 +351,7 @@
             SimulationState.camera.rotY = 0.4;
             SimulationState.nodes = [];
             SimulationState.bonds = [];
+            SimulationState.pulses = [];
             SimulationState.interaction.selectedNode = null;
             nodeInspectContainer.style.display = 'none';
             for(let i=0; i<15; i++) {
@@ -435,6 +437,7 @@
                     });
 
                     SimulationState.bonds = [];
+                    SimulationState.pulses = [];
                     if (imported.bonds && Array.isArray(imported.bonds)) {
                         imported.bonds.forEach(b => {
                             if (SimulationState.nodes[b.fromIdx] && SimulationState.nodes[b.toIdx]) {
@@ -505,12 +508,22 @@
                 }
             });
 
-            // Right click: Sever node
+            // Right click: Trigger interference pulse and sever node
             if (e.button === 2 && clickedNode) {
                 if (SimulationState.interaction.selectedNode === clickedNode) {
                     SimulationState.interaction.selectedNode = null;
                     nodeInspectContainer.style.display = 'none';
                 }
+                // Spawn interference shockwave pulse
+                SimulationState.pulses.push({
+                    x: clickedNode.x,
+                    y: clickedNode.y,
+                    z: clickedNode.z,
+                    radius: 5,
+                    maxRadius: 180 + (SimulationState.params.pulseSpeed * 15),
+                    alpha: 1.0
+                });
+
                 SimulationState.nodes = SimulationState.nodes.filter(n => n !== clickedNode);
                 SimulationState.bonds = SimulationState.bonds.filter(b => b.from !== clickedNode && b.to !== clickedNode);
                 return;
@@ -660,6 +673,21 @@
                 ctx.stroke();
             });
 
+            // Update & Render Interference Pulses
+            const pulseRate = SimulationState.params.pulseSpeed * 6;
+            SimulationState.pulses.forEach(p => {
+                p.radius += pulseRate * (dt || 0.016);
+                p.alpha = Math.max(0, 1.0 - (p.radius / p.maxRadius));
+
+                const proj = project3D(p.x, p.y, p.z);
+                ctx.strokeStyle = `rgba(239, 68, 68, ${p.alpha * 0.8})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(proj.px, proj.py, p.radius * (proj.scale * 0.05), 0, Math.PI * 2);
+                ctx.stroke();
+            });
+            SimulationState.pulses = SimulationState.pulses.filter(p => p.alpha > 0);
+
             // Draw Active Shift+Drag Bond Line preview
             if (SimulationState.interaction.isShiftDragging && SimulationState.interaction.dragStartNode) {
                 const p1 = project3D(
@@ -687,7 +715,6 @@
                 ctx.beginPath();
                 ctx.arc(proj.px, proj.py, Math.max(2, node.baseRadius * proj.scale * 0.05), 0, Math.PI * 2);
                 
-                // Highlight selected node with a distinct stroke ring
                 if (node === SimulationState.interaction.selectedNode) {
                     ctx.strokeStyle = '#ef4444';
                     ctx.lineWidth = 2;
