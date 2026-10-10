@@ -17,69 +17,142 @@
             width: 100vw;
             height: 100vh;
         }
-        .hud {
+        .hud-top {
             position: absolute;
             top: 20px;
             left: 20px;
             background: rgba(6, 8, 16, 0.85);
             border: 1px solid rgba(56, 189, 248, 0.3);
-            padding: 12px 18px;
+            padding: 10px 15px;
             border-radius: 6px;
             pointer-events: none;
+            font-size: 12px;
         }
-        .control-panel {
+        .sidebar {
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 80px;
+            left: 20px;
+            width: 320px;
             background: rgba(6, 8, 16, 0.9);
             border: 1px solid rgba(56, 189, 248, 0.3);
-            padding: 15px 25px;
+            padding: 20px;
             border-radius: 8px;
             display: flex;
-            gap: 30px;
-            align-items: center;
+            flex-direction: column;
+            gap: 15px;
+            box-sizing: border-box;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+        .sidebar h2 {
+            font-size: 16px;
+            margin: 0 0 5px 0;
+            color: #38bdf8;
+            letter-spacing: 1px;
+        }
+        .instruction-box {
+            font-size: 11px;
+            color: #94a3b8;
+            border: 1px dashed rgba(56, 189, 248, 0.3);
+            padding: 8px;
+            border-radius: 4px;
+            line-height: 1.4;
+        }
+        .telemetry-text {
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .sidebar button, .sidebar select {
+            background: #060810;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .sidebar button:hover, .sidebar select:hover {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+        }
+        .sidebar button.full-width {
+            grid-column: span 2;
         }
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
         }
         .control-group label {
             font-size: 11px;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
         }
         .control-group input[type="range"] {
             accent-color: #38bdf8;
             cursor: pointer;
-        }
-        .control-hints {
-            font-size: 10px;
-            color: #94a3b8;
-            border-left: 1px solid rgba(56, 189, 248, 0.2);
-            padding-left: 15px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        TOPOLOGY ENGINE v2.5 | NODES: <span id="node-count">0</span> | FPS: <span id="fps">60</span>
+    <div class="hud-top">
+        TOPOLOGY ENGINE v2.5 | NODES: <span id="node-count">0</span> | BONDS: <span id="bond-count">0</span> | FPS: <span id="fps">60</span>
     </div>
 
-    <div class="control-panel">
-        <div class="control-group">
-            <label>CURVATURE (K): <span id="k-val">0.00</span></label>
-            <input type="range" id="curvatureSlider" min="-1.0" max="1.0" step="0.05" value="0.0">
+    <div class="sidebar">
+        <h2>Holographic Topology 3D</h2>
+        <div class="instruction-box">
+            • Click + Drag to Orbit/Rotate 3D Point-Cloud
         </div>
-        <div class="control-group">
-            <label>DRIFT SPEED: <span id="drift-val">0.20</span></label>
-            <input type="range" id="driftSlider" min="0.0" max="1.0" step="0.05" value="0.2">
+        <div class="telemetry-text">
+            <b>Left Click Canvas:</b> Inject 3D Node<br>
+            <b>Left Click Node:</b> Inspect Telemetry<br>
+            <b>Right Click Node:</b> Sever Node (3D Interference Pulse)<br>
+            Network Integrity: <span style="color: #38bdf8;">100%</span><br>
+            Entanglement S(EE): <span id="s-ee">7.42</span><br>
+            Integrated Info (&Phi;): <span id="phi-val">0.56</span>
         </div>
-        <div class="control-hints">
-            CLICK: Spawn Node<br>
-            DRAG: Rotate Camera<br>
-            SHIFT+DRAG: Entangle Bond
+
+        <div class="btn-grid">
+            <button id="btnExportJSON">Export JSON</button>
+            <button id="btnExportCSV">Export CSV</button>
+            <button id="btnExportDOT">Export DOT</button>
+            <button id="btnImportJSON">Import JSON</button>
+            <button id="btnResetView" class="full-width">Reset View & Topology</button>
+        </div>
+
+        <div class="control-group">
+            <label>Observer Lens</label>
+            <select id="simMode">
+                <option value="Entanglement Matrix">Entanglement Matrix</option>
+                <option value="Quantum Lattice">Quantum Lattice</option>
+                <option value="Manifold Flux">Manifold Flux</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label><span>3D Entanglement Range</span> <span id="range-lbl">220</span></label>
+            <input type="range" id="rangeSlider" min="50" max="400" step="10" value="220">
+        </div>
+
+        <div class="control-group">
+            <label><span>Drift Velocity</span> <span id="drift-lbl">0.8</span></label>
+            <input type="range" id="driftSlider" min="0.0" max="2.0" step="0.05" value="0.8">
+        </div>
+
+        <div class="control-group">
+            <label><span>Pulse Expansion Speed</span> <span id="pulse-lbl">5</span></label>
+            <input type="range" id="pulseSlider" min="1" max="15" step="1" value="5">
         </div>
     </div>
 
@@ -90,17 +163,18 @@
         const SimulationState = {
             version: "2.5.0",
             fps: 60,
+            mode: "Entanglement Matrix",
             camera: {
                 rotX: 0.3,
                 rotY: 0.4,
-                baseScale: 180,
-                isPanning: false,
+                baseScale: 220,
                 lastMouseX: 0,
                 lastMouseY: 0
             },
             params: {
-                curvatureK: 0.0,
-                driftSpeed: 0.2,
+                entanglementRange: 220,
+                driftSpeed: 0.8,
+                pulseSpeed: 5,
                 maxBoundaryRadius: 4.2
             },
             nodes: [],
@@ -164,17 +238,11 @@
             return {
                 x: x, y: y, z: z,
                 baseRadius: 3,
-                vx: (Math.random() - 0.5) * 0.02,
-                vy: (Math.random() - 0.5) * 0.02,
-                vz: (Math.random() - 0.5) * 0.02,
-                update: function(kCurvature, driftSpeed) {
+                vx: (Math.random() - 0.5) * 0.04,
+                vy: (Math.random() - 0.5) * 0.04,
+                vz: (Math.random() - 0.5) * 0.04,
+                update: function(driftSpeed) {
                     const distFromOrigin = Math.hypot(this.x, this.y, this.z) || 1;
-                    if (kCurvature !== 0) {
-                        const pullFactor = (kCurvature * 0.015) / (distFromOrigin * 0.05);
-                        this.vx -= (this.x / distFromOrigin) * pullFactor;
-                        this.vy -= (this.y / distFromOrigin) * pullFactor;
-                        this.vz -= (this.z / distFromOrigin) * pullFactor;
-                    }
                     
                     this.x += this.vx * driftSpeed;
                     this.y += this.vy * driftSpeed;
@@ -185,9 +253,9 @@
                         this.x = (this.x / distFromOrigin) * maxR;
                         this.y = (this.y / distFromOrigin) * maxR;
                         this.z = (this.z / distFromOrigin) * maxR;
-                        this.vx *= -0.4;
-                        this.vy *= -0.4;
-                        this.vz *= -0.4;
+                        this.vx *= -0.5;
+                        this.vy *= -0.5;
+                        this.vz *= -0.5;
                     }
                 }
             };
@@ -213,19 +281,86 @@
         }
 
         // === [BLOCK: MODULE_TELEMETRY_UI] ===
-        const curvatureSlider = document.getElementById('curvatureSlider');
+        const rangeSlider = document.getElementById('rangeSlider');
         const driftSlider = document.getElementById('driftSlider');
-        const kVal = document.getElementById('k-val');
-        const driftVal = document.getElementById('drift-val');
+        const pulseSlider = document.getElementById('pulseSlider');
+        const rangeLbl = document.getElementById('range-lbl');
+        const driftLbl = document.getElementById('drift-lbl');
+        const pulseLbl = document.getElementById('pulse-lbl');
+        const simModeSelect = document.getElementById('simMode');
 
-        curvatureSlider.addEventListener('input', (e) => {
-            SimulationState.params.curvatureK = parseFloat(e.target.value);
-            kVal.innerText = SimulationState.params.curvatureK.toFixed(2);
+        rangeSlider.addEventListener('input', (e) => {
+            SimulationState.params.entanglementRange = parseFloat(e.target.value);
+            rangeLbl.innerText = SimulationState.params.entanglementRange;
+            SimulationState.camera.baseScale = SimulationState.params.entanglementRange;
         });
 
         driftSlider.addEventListener('input', (e) => {
             SimulationState.params.driftSpeed = parseFloat(e.target.value);
-            driftVal.innerText = SimulationState.params.driftSpeed.toFixed(2);
+            driftLbl.innerText = SimulationState.params.driftSpeed.toFixed(2);
+        });
+
+        pulseSlider.addEventListener('input', (e) => {
+            SimulationState.params.pulseSpeed = parseInt(e.target.value, 10);
+            pulseLbl.innerText = SimulationState.params.pulseSpeed;
+        });
+
+        simModeSelect.addEventListener('change', (e) => {
+            SimulationState.mode = e.target.value;
+        });
+
+        document.getElementById('btnResetView').addEventListener('click', () => {
+            SimulationState.camera.rotX = 0.3;
+            SimulationState.camera.rotY = 0.4;
+            SimulationState.nodes = [];
+            SimulationState.bonds = [];
+            for(let i=0; i<15; i++) {
+                SimulationState.nodes.push(createNode(
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 3
+                ));
+            }
+        });
+
+        document.getElementById('btnExportJSON').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(SimulationState, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "topology_state.json");
+            dlAnchor.click();
+        });
+
+        document.getElementById('btnExportCSV').addEventListener('click', () => {
+            let csvContent = "data:text/csv;charset=utf-8,id,x,y,z,vx,vy,vz\n";
+            SimulationState.nodes.forEach((n, idx) => {
+                csvContent += `${idx},${n.x.toFixed(4)},${n.y.toFixed(4)},${n.z.toFixed(4)},${n.vx.toFixed(4)},${n.vy.toFixed(4)},${n.vz.toFixed(4)}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", encodedUri);
+            dlAnchor.setAttribute("download", "topology_nodes.csv");
+            dlAnchor.click();
+        });
+
+        document.getElementById('btnExportDOT').addEventListener('click', () => {
+            let dotContent = "data:text/plain;charset=utf-8,graph Topology {\n";
+            SimulationState.nodes.forEach((_, idx) => {
+                dotContent += `  N${idx};\n`;
+            });
+            SimulationState.bonds.forEach(b => {
+                const fromIdx = SimulationState.nodes.indexOf(b.from);
+                const toIdx = SimulationState.nodes.indexOf(b.to);
+                if (fromIdx !== -1 && toIdx !== -1) {
+                    dotContent += `  N${fromIdx} -- N${toIdx};\n`;
+                }
+            });
+            dotContent += "}\n";
+            const encodedUri = encodeURI(dotContent);
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", encodedUri);
+            dlAnchor.setAttribute("download", "topology.dot");
+            dlAnchor.click();
         });
 
         // === [BLOCK: MODULE_INPUT_INTERACTION] ===
@@ -233,6 +368,7 @@
         let hasDragged = false;
 
         canvas.addEventListener('mousedown', (e) => {
+            if (e.target !== canvas) return;
             isMouseDown = true;
             hasDragged = false;
             SimulationState.camera.lastMouseX = e.clientX;
@@ -280,6 +416,7 @@
         });
 
         window.addEventListener('mouseup', (e) => {
+            if (!isMouseDown) return;
             if (!hasDragged && !SimulationState.interaction.selectedNode && !SimulationState.interaction.isShiftDragging) {
                 const rect = canvas.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
@@ -287,28 +424,6 @@
 
                 const worldPos = unproject3D(clickX, clickY, 0);
                 SimulationState.nodes.push(createNode(worldPos.x, worldPos.y, worldPos.z));
-            }
-
-            if (SimulationState.interaction.isShiftDragging && SimulationState.interaction.dragStartNode) {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-
-                let targetNode = null;
-                SimulationState.nodes.forEach(node => {
-                    const proj = project3D(node.x, node.y, node.z);
-                    const r = Math.max(2, node.baseRadius * proj.scale * 0.05);
-                    if (Math.hypot(mouseX - proj.px, mouseY - proj.py) < r + 4) {
-                        targetNode = node;
-                    }
-                });
-
-                if (targetNode && targetNode !== SimulationState.interaction.dragStartNode) {
-                    SimulationState.bonds.push({
-                        from: SimulationState.interaction.dragStartNode,
-                        to: targetNode
-                    });
-                }
             }
 
             isMouseDown = false;
@@ -324,6 +439,7 @@
             SimulationState.fps = Math.round(1 / (dt || 0.016));
             document.getElementById('fps').innerText = SimulationState.fps;
             document.getElementById('node-count').innerText = SimulationState.nodes.length;
+            document.getElementById('bond-count').innerText = SimulationState.bonds.length;
 
             ctx.fillStyle = '#060810';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -341,11 +457,10 @@
             });
 
             // Update & Render Nodes
-            const k = SimulationState.params.curvatureK;
             const drift = SimulationState.params.driftSpeed;
 
             SimulationState.nodes.forEach(node => {
-                node.update(k, drift);
+                node.update(drift);
                 const proj = project3D(node.x, node.y, node.z);
 
                 ctx.beginPath();
