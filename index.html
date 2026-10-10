@@ -27,12 +27,60 @@
             border-radius: 6px;
             pointer-events: none;
         }
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(6, 8, 16, 0.9);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 15px 25px;
+            border-radius: 8px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .control-group label {
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+        .control-group input[type="range"] {
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+        .control-hints {
+            font-size: 10px;
+            color: #94a3b8;
+            border-left: 1px solid rgba(56, 189, 248, 0.2);
+            padding-left: 15px;
+        }
     </style>
 </head>
 <body>
 
     <div class="hud">
         TOPOLOGY ENGINE v2.5 | NODES: <span id="node-count">0</span> | FPS: <span id="fps">60</span>
+    </div>
+
+    <div class="control-panel">
+        <div class="control-group">
+            <label>CURVATURE (K): <span id="k-val">0.00</span></label>
+            <input type="range" id="curvatureSlider" min="-1.0" max="1.0" step="0.05" value="0.0">
+        </div>
+        <div class="control-group">
+            <label>DRIFT SPEED: <span id="drift-val">0.20</span></label>
+            <input type="range" id="driftSlider" min="0.0" max="1.0" step="0.05" value="0.2">
+        </div>
+        <div class="control-hints">
+            CLICK: Spawn Node<br>
+            DRAG: Rotate Camera<br>
+            SHIFT+DRAG: Entangle Bond
+        </div>
     </div>
 
     <canvas id="simCanvas"></canvas>
@@ -115,7 +163,7 @@
         function createNode(x, y, z) {
             return {
                 x: x, y: y, z: z,
-                baseRadius: 3, // Drastically reduced base size
+                baseRadius: 3,
                 vx: (Math.random() - 0.5) * 0.02,
                 vy: (Math.random() - 0.5) * 0.02,
                 vz: (Math.random() - 0.5) * 0.02,
@@ -163,6 +211,22 @@
                 (Math.random() - 0.5) * 3
             ));
         }
+
+        // === [BLOCK: MODULE_TELEMETRY_UI] ===
+        const curvatureSlider = document.getElementById('curvatureSlider');
+        const driftSlider = document.getElementById('driftSlider');
+        const kVal = document.getElementById('k-val');
+        const driftVal = document.getElementById('drift-val');
+
+        curvatureSlider.addEventListener('input', (e) => {
+            SimulationState.params.curvatureK = parseFloat(e.target.value);
+            kVal.innerText = SimulationState.params.curvatureK.toFixed(2);
+        });
+
+        driftSlider.addEventListener('input', (e) => {
+            SimulationState.params.driftSpeed = parseFloat(e.target.value);
+            driftVal.innerText = SimulationState.params.driftSpeed.toFixed(2);
+        });
 
         // === [BLOCK: MODULE_INPUT_INTERACTION] ===
         let isMouseDown = false;
@@ -285,7 +349,6 @@
                 const proj = project3D(node.x, node.y, node.z);
 
                 ctx.beginPath();
-                // Apply a strict multiplier (0.05) to keep nodes small and distinct
                 ctx.arc(proj.px, proj.py, Math.max(2, node.baseRadius * proj.scale * 0.05), 0, Math.PI * 2);
                 ctx.fillStyle = '#38bdf8';
                 ctx.fill();
