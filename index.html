@@ -181,6 +181,11 @@
             },
             nodes: [],
             bonds: [],
+            telemetry: {
+                integrity: 100,
+                sEE: 7.42,
+                phi: 0.56
+            },
             interaction: {
                 selectedNode: null,
                 dragStartNode: null,
@@ -293,6 +298,9 @@
         const pulseLbl = document.getElementById('pulse-lbl');
         const simModeSelect = document.getElementById('simMode');
         const importFileInput = document.getElementById('importFileInput');
+        const integrityVal = document.getElementById('integrity-val');
+        const sEEVal = document.getElementById('s-ee');
+        const phiVal = document.getElementById('phi-val');
 
         rangeSlider.addEventListener('input', (e) => {
             SimulationState.params.entanglementRange = parseFloat(e.target.value);
@@ -329,7 +337,6 @@
         });
 
         document.getElementById('btnExportJSON').addEventListener('click', () => {
-            // Map node references to indices for robust JSON export
             const exportData = {
                 version: SimulationState.version,
                 mode: SimulationState.mode,
@@ -534,7 +541,6 @@
                 });
 
                 if (targetNode && targetNode !== SimulationState.interaction.dragStartNode) {
-                    // Check if bond already exists
                     const exists = SimulationState.bonds.some(b => 
                         (b.from === SimulationState.interaction.dragStartNode && b.to === targetNode) ||
                         (b.from === targetNode && b.to === SimulationState.interaction.dragStartNode)
@@ -569,6 +575,23 @@
             document.getElementById('fps').innerText = SimulationState.fps;
             document.getElementById('node-count').innerText = SimulationState.nodes.length;
             document.getElementById('bond-count').innerText = SimulationState.bonds.length;
+
+            // Update Dynamic Telemetry Calculations
+            const nodeCount = SimulationState.nodes.length;
+            const bondCount = SimulationState.bonds.length;
+            if (nodeCount > 0) {
+                SimulationState.telemetry.sEE = +(7.42 + (bondCount * 0.35) - (nodeCount * 0.02)).toFixed(2);
+                SimulationState.telemetry.phi = +(0.56 + (bondCount / Math.max(1, nodeCount)) * 0.12).toFixed(2);
+                SimulationState.telemetry.integrity = Math.max(40, Math.min(100, Math.round(100 - (nodeCount > 25 ? (nodeCount - 25) * 1.5 : 0))));
+            } else {
+                SimulationState.telemetry.sEE = 0.00;
+                SimulationState.telemetry.phi = 0.00;
+                SimulationState.telemetry.integrity = 0;
+            }
+
+            integrityVal.innerText = SimulationState.telemetry.integrity + '%';
+            sEEVal.innerText = SimulationState.telemetry.sEE;
+            phiVal.innerText = SimulationState.telemetry.phi;
 
             ctx.fillStyle = '#060810';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
