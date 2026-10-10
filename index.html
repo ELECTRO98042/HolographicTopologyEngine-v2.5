@@ -514,13 +514,13 @@
                     SimulationState.interaction.selectedNode = null;
                     nodeInspectContainer.style.display = 'none';
                 }
-                // Spawn interference shockwave pulse
+                // Spawn bounded interference shockwave pulse
                 SimulationState.pulses.push({
                     x: clickedNode.x,
                     y: clickedNode.y,
                     z: clickedNode.z,
-                    radius: 5,
-                    maxRadius: 180 + (SimulationState.params.pulseSpeed * 15),
+                    radius: 0.1,
+                    maxRadius: 0.8 + (SimulationState.params.pulseSpeed * 0.05),
                     alpha: 1.0
                 });
 
@@ -673,17 +673,19 @@
                 ctx.stroke();
             });
 
-            // Update & Render Interference Pulses
-            const pulseRate = SimulationState.params.pulseSpeed * 6;
+            // Update & Render Interference Pulses (Bounded in 3D world space)
+            const expandSpeed = (SimulationState.params.pulseSpeed * 0.3) + 0.5;
             SimulationState.pulses.forEach(p => {
-                p.radius += pulseRate * (dt || 0.016);
+                p.radius += expandSpeed * (dt || 0.016);
                 p.alpha = Math.max(0, 1.0 - (p.radius / p.maxRadius));
 
                 const proj = project3D(p.x, p.y, p.z);
-                ctx.strokeStyle = `rgba(239, 68, 68, ${p.alpha * 0.8})`;
-                ctx.lineWidth = 2;
+                const screenRadius = p.radius * proj.scale;
+
+                ctx.strokeStyle = `rgba(239, 68, 68, ${p.alpha * 0.85})`;
+                ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.arc(proj.px, proj.py, p.radius * (proj.scale * 0.05), 0, Math.PI * 2);
+                ctx.arc(proj.px, proj.py, Math.max(2, screenRadius), 0, Math.PI * 2);
                 ctx.stroke();
             });
             SimulationState.pulses = SimulationState.pulses.filter(p => p.alpha > 0);
