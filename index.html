@@ -112,7 +112,7 @@
     <div class="sidebar">
         <h2>Holographic Topology 3D</h2>
         <div class="instruction-box">
-            • Drag & Drop JSON here or Click Canvas to Inject Nodes
+            • Shift+Drag between Nodes to Entangle Bond
         </div>
         <div class="telemetry-text">
             <b>Left Click Canvas:</b> Inject 3D Node<br>
@@ -184,7 +184,9 @@
             interaction: {
                 selectedNode: null,
                 dragStartNode: null,
-                isShiftDragging: false
+                isShiftDragging: false,
+                currentMouseX: 0,
+                currentMouseY: 0
             }
         };
 
@@ -327,7 +329,19 @@
         });
 
         document.getElementById('btnExportJSON').addEventListener('click', () => {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(SimulationState, null, 2));
+            // Map node references to indices for robust JSON export
+            const exportData = {
+                version: SimulationState.version,
+                mode: SimulationState.mode,
+                camera: SimulationState.camera,
+                params: SimulationState.params,
+                nodes: SimulationState.nodes,
+                bonds: SimulationState.bonds.map(b => ({
+                    fromIdx: SimulationState.nodes.indexOf(b.from),
+                    toIdx: SimulationState.nodes.indexOf(b.to)
+                })).filter(b => b.fromIdx !== -1 && b.toIdx !== -1)
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
             const dlAnchor = document.createElement('a');
             dlAnchor.setAttribute("href", dataStr);
             dlAnchor.setAttribute("download", "topology_state.json");
@@ -376,7 +390,6 @@
                 if (imported.nodes && Array.isArray(imported.nodes)) {
                     SimulationState.nodes = imported.nodes.map(n => {
                         let x = n.x, y = n.y, z = n.z || 0;
-                        // Normalize pixel-space coordinates from older exports if necessary
                         if (Math.abs(x) > 10 || Math.abs(y) > 10) {
                             x = (x - canvas.width / 2) / (SimulationState.camera.baseScale || 220);
                             y = (y - canvas.height / 2) / (SimulationState.camera.baseScale || 220);
@@ -388,7 +401,19 @@
                         node.vz = n.vz || node.vz;
                         return node;
                     });
+
                     SimulationState.bonds = [];
+                    if (imported.bonds && Array.isArray(imported.bonds)) {
+                        imported.bonds.forEach(b => {
+                            if (SimulationState.nodes[b.fromIdx] && SimulationState.nodes[b.toIdx]) {
+                                SimulationState.bonds.push({
+                                    from: SimulationState.nodes[b.fromIdx],
+                                    to: SimulationState.nodes[b.toIdx]
+                                });
+                            }
+                        });
+                    }
+
                     if (imported.params) {
                         SimulationState.params = imported.params;
                         rangeSlider.value = SimulationState.params.entanglementRange || 220;
@@ -414,7 +439,6 @@
             importFileInput.value = '';
         });
 
-        // Prevent default drag-and-drop browser behavior and handle drops
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -447,6 +471,7 @@
                 }
             });
 
+            // Right click: Sever node
             if (e.button === 2 && clickedNode) {
                 SimulationState.nodes = SimulationState.nodes.filter(n => n !== clickedNode);
                 SimulationState.bonds = SimulationState.bonds.filter(b => b.from !== clickedNode && b.to !== clickedNode);
@@ -467,6 +492,10 @@
         });
 
         window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            SimulationState.interaction.currentMouseX = e.clientX - rect.left;
+            SimulationState.interaction.currentMouseY = e.clientY - rect.top;
+
             if (!isMouseDown) return;
             const dx = e.clientX - SimulationState.camera.lastMouseX;
             const dy = e.clientY - SimulationState.camera.lastMouseY;
@@ -490,7 +519,34 @@
             if (!isMouseDown) return;
             if (e.button === 2) return;
 
-            if (!hasDragged && !SimulationState.interaction.selectedNode && !SimulationState.interaction.isShiftDragging) {
+            if (SimulationState.interaction.isShiftDragging && SimulationState.interaction.dragStartNode) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                let targetNode = null;
+                SimulationState.nodes.forEach(node => {
+                    const proj = project3D(node.x, node.y, node.z);
+                    const r = Math.max(2, node.baseRadius * proj.scale * 0.05);
+                    if (Math.hypot(mouseX - proj.px, mouseY - proj.py) < r + 6) {
+                        targetNode = node;
+                    }
+                });
+
+                if (targetNode && targetNode !== SimulationState.interaction.dragStartNode) {
+                    // Check if bond already exists
+                    const exists = SimulationState.bonds.some(b => 
+                        (b.from === SimulationState.interaction.dragStartNode && b.to === targetNode) ||
+                        (b.from === targetNode && b.to === SimulationState.interaction.dragStartNode)
+                    );
+                    if (!exists) {
+                        SimulationState.bonds.push({
+                            from: SimulationState.interaction.dragStartNode,
+                            to: targetNode
+                        });
+                    }
+                }
+            } else if (!hasDragged && !SimulationState.interaction.selectedNode) {
                 const rect = canvas.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 const clickY = e.clientY - rect.top;
@@ -517,7 +573,7 @@
             ctx.fillStyle = '#060810';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Bonds
+            // Draw Established Bonds
             ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
             ctx.lineWidth = 1;
             SimulationState.bonds.forEach(b => {
@@ -528,6 +584,23 @@
                 ctx.lineTo(p2.px, p2.py);
                 ctx.stroke();
             });
+
+            // Draw Active Shift+Drag Bond Line preview
+            if (SimulationState.interaction.isShiftDragging && SimulationState.interaction.dragStartNode) {
+                const p1 = project3D(
+                    SimulationState.interaction.dragStartNode.x,
+                    SimulationState.interaction.dragStartNode.y,
+                    SimulationState.interaction.dragStartNode.z
+                );
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(p1.px, p1.py);
+                ctx.lineTo(SimulationState.interaction.currentMouseX, SimulationState.interaction.currentMouseY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
 
             // Update & Render Nodes
             const drift = SimulationState.params.driftSpeed;
