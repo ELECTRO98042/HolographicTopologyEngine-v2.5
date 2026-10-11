@@ -53,7 +53,7 @@
 
     <div id="hud-container">
         <h1>Holographic HUD v2.5</h1>
-        <div class="metric-row">System Integrity: <span id="val-integrity" class="metric-value">--</span>%</div>
+        <div class="metric-row">System Integrity: <span id="val-integrity" class="metric-value">--</span></div>
         <div class="metric-row">Entanglement ($S_{ee}$): <span id="val-see" class="metric-value">--</span></div>
         <div class="metric-row">Integrated Info ($\Phi$): <span id="val-phi" class="metric-value">--</span></div>
     </div>
@@ -164,7 +164,7 @@
         }
 
         // Poll telemetry every 500ms
-        setInterval(sendTelemetry, 500);
+        //setInterval(sendTelemetry, 500);
 
         // Start animation loop
         let selectedNode = null;
@@ -194,12 +194,54 @@
         });
 
         window.addEventListener('mouseup', () => {
-            if (selectedNode) {
-                selectedNode = null;
-                // Optional: trigger an immediate telemetry sync call here if desired
-            }
-        });
+                if (selectedNode) {
+                    selectedNode = null;
+
+                    // Push updated node coordinates to the backend via WebSocket
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            action: "update_nodes",
+                            nodes: nodes
+                        }));
+                    }
+                }
+            });
         loop();
+        // Establish persistent WebSocket connection to the backend telemetry stream
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = "ws://127.0.0.1:8000/ws/telemetry";
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                    console.log("Holographic HUD WebSocket Connected.");
+                    ws.send(JSON.stringify({
+                        action: "update_nodes",
+                        nodes: nodes
+                    }));
+                };
+
+            ws.onmessage = (event) => {
+                try {
+                    const packet = JSON.parse(event.data);
+
+                    if (packet.type === "hud_update") {
+                        const integrityEl = document.getElementById("val-integrity");
+                        const sEeEl = document.getElementById("val-see");
+                        const phiEl = document.getElementById("val-phi");
+
+                        if (integrityEl) integrityEl.innerText = `${packet.integrity}%`;
+                        if (sEeEl) sEeEl.innerText = packet.s_ee.toFixed(4);
+                        if (phiEl) phiEl.innerText = packet.phi.toFixed(4);
+                    }
+                } catch (err) {
+                    console.error("Failed to parse telemetry packet:", err);
+                }
+            };
+
+            ws.onclose = () => {
+                console.warn("Holographic HUD WebSocket Disconnected. Reconnecting...");
+                setTimeout(() => location.reload(), 3000);
+            };
     </script>
 </body>
 

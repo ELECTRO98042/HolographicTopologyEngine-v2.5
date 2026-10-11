@@ -1,15 +1,20 @@
 # backend/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from fastapi.staticfiles import StaticFiles
 import time
+import asyncio
+import json
 import jax
 import jax.dlpack
 import jax.numpy as jnp
+import os
+
 from geometry import compute_curvature_metrics
 
-app = FastAPI(title="Holographic Topology Compute Engine", version="2.6.0")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,17 +33,14 @@ class TelemetryStreamingPipeline:
     def step_telemetry(self, node_positions):
         """
         Executes a batched, vectorized evaluation of the bulk geometry 
-        across the spatial grid and prepares the zero-copy DLPack capsule[cite: 1].
+        across the spatial grid and prepares the zero-copy DLPack capsule.
         """
-        # Vectorize calculation across spatial grid simultaneously[cite: 1]
         batch_compute = jax.vmap(lambda x: compute_curvature_metrics(x, node_positions))
         
         ricci_scalars, ricci_tensors, christoffels = batch_compute(self.spatial_grid)
         
-        # Ensure device execution finishes for the current frame pipeline step
         ricci_scalars.block_until_ready()
         
-        # Zero-copy memory handshake via DLPack[cite: 1]
         dlpack_capsule = jax.dlpack.to_dlpack(ricci_scalars)
         
         telemetry_packet = {
@@ -52,6 +54,28 @@ class TelemetryStreamingPipeline:
 
 # Instantiate pipeline during application startup
 pipeline = TelemetryStreamingPipeline(grid_shape=(1000, 4))
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_text_json(self, message: dict, websocket: WebSocket):
+        await websocket.send_text(json.dumps(message))
+
+    async def send_binary(self, data: bytes, websocket: WebSocket):
+        await websocket.send_bytes(data)
+
+manager = ConnectionManager()
+
+# Global state tracking for active simulation nodes per session/server instance
+current_active_node_positions = jnp.zeros((5, 4), dtype=jnp.float64)
 
 class NodeModel(BaseModel):
     id: str
@@ -84,33 +108,22 @@ def compute_topology(payload: SimulationPayload):
             "complexity": 0.0
         }
 
-    # Extract coordinates into a JAX array (N x 3) and pad to 4D spatial evaluation inputs
     base_coords = jnp.array([[n.x, n.y, n.z] for n in nodes_data], dtype=jnp.float64)
     padded_node_positions = jnp.pad(base_coords, ((0, 0), (0, max(0, 4 - base_coords.shape[1]))), constant_values=1.0)
     
-    # Extract health and weights
     healths = jnp.array([n.health for n in nodes_data], dtype=jnp.float64)
-    is_core = jnp.array([1.0 if n.isCore else 0.5 for n in nodes_data], dtype=jnp.float64)
-    is_severed = jnp.array([0.0 if n.isSevered else 1.0 for n in nodes_data], dtype=jnp.float64)
-
-    # Compute pairwise Euclidean distance matrix
+    
     diff = base_coords[:, None, :] - base_coords[None, :, :]
     dist_matrix = jnp.sqrt(jnp.sum(diff ** 2, axis=-1) + 1e-8)
 
-    # QFT Entanglement Entropy ($S_{ee}$) approximation via boundary correlation
     s_ee = float(jnp.sum(base_coords[:, 0]) * 0.01)
-
-    # IIT Phi ($\Phi$) approximation based on active integrated connectivity repertoires
     phi = float(jnp.std(base_coords) * 0.1)
-
-    # System Integrity percentage
     integrity = int(max(0, min(100, 100 - (base_coords.shape[0] * 2))))
 
-    # Run the hardened telemetry streaming pipeline using current node positions
     telemetry = pipeline.step_telemetry(padded_node_positions)
     
     bulk_curvature = telemetry["mean_ricci_scalar"]
-    complexity = telemetry["max_ricci_scalar"] * 0.5  # Holographic complexity proxy derived from max curvature peak
+    complexity = telemetry["max_ricci_scalar"] * 0.5
 
     return {
         "status": "success",
@@ -120,3 +133,60 @@ def compute_topology(payload: SimulationPayload):
         "bulk_curvature": round(bulk_curvature, 4),
         "complexity": round(complexity, 4)
     }
+
+@app.websocket("/ws/telemetry")
+async def websocket_telemetry_endpoint(websocket: WebSocket):
+    global current_active_node_positions
+    await manager.connect(websocket)
+    
+    try:
+        while True:
+            start_time = time.time()
+
+            base_coords = current_active_node_positions[:, :3]
+
+            s_ee = float(jnp.sum(base_coords[:, 0]) * 0.01)
+            phi = float(jnp.std(base_coords) * 0.1)
+            integrity = int(max(0, min(100, 100 - (base_coords.shape[0] * 2))))
+            
+            telemetry = pipeline.step_telemetry(current_active_node_positions)
+            
+            hud_metadata = {
+                "type": "hud_update",
+                "timestamp": telemetry["timestamp"],
+                "integrity": integrity,
+                "s_ee": round(s_ee, 4),
+                "phi": round(phi, 4),
+                "max_curvature": telemetry["max_ricci_scalar"],
+                "avg_curvature": telemetry["mean_ricci_scalar"]
+            }
+
+            await manager.send_text_json(hud_metadata, websocket)
+            
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+                control_packet = json.loads(data)
+                if control_packet.get("action") == "update_nodes":
+                    nodes = control_packet.get("nodes", [])
+                    if nodes:
+                        base_coords_in = jnp.array([[n["x"], n["y"], n["z"]] for n in nodes], dtype=jnp.float64)
+                        current_active_node_positions = jnp.pad(
+                            base_coords_in, 
+                            ((0, 0), (0, max(0, 4 - base_coords_in.shape[1]))), 
+                            constant_values=1.0
+                        )
+            except asyncio.TimeoutError:
+                pass
+                
+            elapsed = time.time() - start_time
+            sleep_duration = max(0.0, (1.0 / 60.0) - elapsed)
+            await asyncio.sleep(sleep_duration)
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+# 2. Mount static files last so they don't override custom routes
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend"))
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
