@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Holographic Topology Engine v2.5</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #060810;
+            color: #38bdf8;
+            font-family: monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .sidebar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 310px;
+            background: rgba(6, 8, 16, 0.94);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            padding: 18px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-sizing: border-box;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            z-index: 10;
+        }
+        .sidebar h2 {
+            font-size: 16px;
+            margin: 0 0 2px 0;
+            color: #38bdf8;
+            letter-spacing: 0.5px;
+        }
+        .instruction-box {
+            font-size: 10px;
+            color: #94a3b8;
+            line-height: 1.4;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+            padding-bottom: 8px;
+        }
+        .telemetry-text {
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+        .btn-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .sidebar button, .sidebar select {
+            background: #060810;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .sidebar button:hover, .sidebar select:hover {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .control-group label {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .control-group input[type="range"] {
+            accent-color: #38bdf8;
+            cursor: pointer;
+            width: 100%;
+        }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            font-size: 11px;
+            color: #38bdf8;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .section-header {
+            font-size: 11px;
+            font-weight: bold;
+            color: #38bdf8;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Holographic Topology</h2>
+        <div class="instruction-box">
+            <b>Left Drag:</b> Orbit & Tilt Camera<br>
+            <b>Shift + Drag:</b> Proximity Gradient Bond<br>
+            <b>Left Click:</b> Inject Node | <b>Right Click:</b> Sever Node
+        </div>
+        <div class="telemetry-text">
+            Integrity: <span style="color: #38bdf8;" id="integrity-val">100%</span><br>
+            Entanglement S(EE): <span id="s-ee">2.77</span><br>
+            Integrated Info (&Phi;): <span id="phi-val">0.47</span>
+        </div>
+
+        <div class="btn-grid">
+            <button id="btnJSON">JSON</button>
+            <button id="btnCSV">CSV</button>
+            <button id="btnDOT">DOT</button>
+        </div>
+        <div class="btn-grid-2">
+            <button id="btnImport">Import</button>
+            <button id="btnReset">Reset State</button>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" style="display: none;">
+
+        <div class="control-group">
+            <span class="section-header">Environment Manifold</span>
+            <select id="manifoldSelect">
+                <option value="AdS Hypersphere (Spherical)">AdS Hypersphere (Spherical)</option>
+                <option value="Cubic Lattice">Cubic Lattice</option>
+                <option value="Toroidal Field">Toroidal Field</option>
+                <option value="Open Space Minkowski">Open Space Minkowski</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="chkReflectivity" checked> Enforce Boundary Reflectivity
+            </label>
+        </div>
+
+        <div class="control-group">
+            <span class="section-header">Observer Lens</span>
+            <select id="simMode">
+                <option value="Entanglement Matrix">Entanglement Matrix</option>
+                <option value="Quantum Lattice">Quantum Lattice</option>
+                <option value="Manifold Flux">Manifold Flux</option>
+                <option value="Fault Diagnostics (Orange)">Fault Diagnostics (Orange)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <span class="section-header">Interference Overlays</span>
+            <div class="checkbox-grid">
+                <label class="checkbox-label"><input type="checkbox" id="chkRipples" checked> Wave Ripples</label>
+                <label class="checkbox-label"><input type="checkbox" id="chkCurvWell" checked> Curvature Well</label>
+                <label class="checkbox-label"><input type="checkbox" id="chkPhaseBands" checked> Phase Bands</label>
+                <label class="checkbox-label"><input type="checkbox" id="chkCFTRays" checked> CFT Rays</label>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label><span>Entanglement Range</span> <span id="range-lbl">180</span></label>
+            <input type="range" id="rangeSlider" min="50" max="600" step="10" value="180">
+        </div>
+
+        <div class="control-group">
+            <label><span>Drift Velocity</span> <span id="drift-lbl">0.8</span></label>
+            <input type="range" id="driftSlider" min="0.0" max="2.0" step="0.05" value="0.8">
+        </div>
+
+        <div class="control-group">
+            <label><span>Spacetime Curvature (k)</span> <span id="curv-lbl">-1.0</span></label>
+            <input type="range" id="curvSlider" min="-3.0" max="3.0" step="0.1" value="-1.0">
+        </div>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        const Engine = {
+            version: "2.5.0",
+            camera: { rotX: 0.3, rotY: 0.4, scale: 180 },
+            params: {
+                range: 180,
+                drift: 0.8,
+                curvature: -1.0,
+                reflectivity: true,
+                manifold: "AdS Hypersphere (Spherical)",
+                lens: "Entanglement Matrix",
+                ripples: true,
+                curvWell: true,
+                phaseBands: true,
+                cftRays: true
+            },
+            nodes: [],
+            bonds: [],
+            selectedNode: null,
+            interaction: {
+                isShiftDragging: false,
+                dragStartNode: null,
+                currentMouseX: 0,
+                currentMouseY: 0
+            }
+        };
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function createNode(x, y, z) {
+            return {
+                x, y, z,
+                vx: (Math.random() - 0.5) * 0.03,
+                vy: (Math.random() - 0.5) * 0.03,
+                vz: (Math.random() - 0.5) * 0.03,
+                update(drift) {
+                    this.x += this.vx * drift;
+                    this.y += this.vy * drift;
+                    this.z += this.vz * drift;
+                    const r = Math.hypot(this.x, this.y, this.z);
+                    if (r > 3.8) {
+                        if (Engine.params.reflectivity) {
+                            this.vx *= -1; this.vy *= -1; this.vz *= -1;
+                        } else {
+                            this.x *= -0.9; this.y *= -0.9; this.z *= -0.9;
+                        }
+                    }
+                }
+            };
+        }
+
+        // Initialize nodes & bonds
+        for (let i = 0; i < 14; i++) {
+            Engine.nodes.push(createNode((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3));
+        }
+        for (let i = 0; i < 12; i++) {
+            Engine.bonds.push({ from: Engine.nodes[i], to: Engine.nodes[(i + 3) % Engine.nodes.length], isCustom: false });
+        }
+
+        function project3D(x, y, z) {
+            const rx = Engine.camera.rotX, ry = Engine.camera.rotY;
+            const cosY = Math.cos(ry), sinY = Math.sin(ry);
+            const x1 = x * cosY - z * sinY;
+            const z1 = x * sinY + z * cosY;
+
+            const cosX = Math.cos(rx), sinX = Math.sin(rx);
+            const y2 = y * cosX - z1 * sinX;
+            const z2 = y * sinX + z1 * cosX;
+
+            const scale = Engine.camera.scale / (8.0 + z2);
+            return {
+                px: (canvas.width / 2) + 120 + x1 * scale,
+                py: canvas.height / 2 + y2 * scale,
+                scale: scale
+            };
+        }
+
+        // UI Controls Wiring
+        document.getElementById('rangeSlider').addEventListener('input', e => {
+            Engine.params.range = parseFloat(e.target.value);
+            Engine.camera.scale = Engine.params.range;
+            document.getElementById('range-lbl').innerText = e.target.value;
+        });
+        document.getElementById('driftSlider').addEventListener('input', e => {
+            Engine.params.drift = parseFloat(e.target.value);
+            document.getElementById('drift-lbl').innerText = Engine.params.drift.toFixed(2);
+        });
+        document.getElementById('curvSlider').addEventListener('input', e => {
+            Engine.params.curvature = parseFloat(e.target.value);
+            document.getElementById('curv-lbl').innerText = Engine.params.curvature.toFixed(1);
+        });
+        document.getElementById('manifoldSelect').addEventListener('change', e => { Engine.params.manifold = e.target.value; });
+        document.getElementById('simMode').addEventListener('change', e => { Engine.params.lens = e.target.value; });
+        document.getElementById('chkReflectivity').addEventListener('change', e => { Engine.params.reflectivity = e.target.checked; });
+        document.getElementById('chkRipples').addEventListener('change', e => { Engine.params.ripples = e.target.checked; });
+        document.getElementById('chkCurvWell').addEventListener('change', e => { Engine.params.curvWell = e.target.checked; });
+        document.getElementById('chkPhaseBands').addEventListener('change', e => { Engine.params.phaseBands = e.target.checked; });
+        document.getElementById('chkCFTRays').addEventListener('change', e => { Engine.params.cftRays = e.target.checked; });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            Engine.nodes = []; Engine.bonds = []; Engine.selectedNode = null;
+            for (let i = 0; i < 14; i++) {
+                Engine.nodes.push(createNode((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3));
+            }
+        });
+
+        // Backend telemetry bridge connection
+        async function syncBackendTelemetry() {
+            if (Engine.nodes.length === 0) return;
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/compute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nodes: Engine.nodes.map(n => ({ x: n.x, y: n.y, z: n.z })),
+                        params: Engine.params
+                    })
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    document.getElementById('integrity-val').innerText = data.integrity + "%";
+                    document.getElementById('s-ee').innerText = data.s_ee;
+                    document.getElementById('phi-val').innerText = data.phi;
+                }
+            } catch (err) {
+                // Fail silently if python backend is offline
+            }
+        }
+        setInterval(syncBackendTelemetry, 1500);
+
+        // Mouse Interactions
+        let isMouseDown = false, hasDragged = false, lastX = 0, lastY = 0;
+        canvas.addEventListener('mousedown', e => {
+            if (e.target !== canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
+
+            let clickedNode = null;
+            Engine.nodes.forEach(n => {
+                const p = project3D(n.x, n.y, n.z);
+                if (Math.hypot(clickX - p.px, clickY - p.py) < 16) clickedNode = n;
+            });
+
+            if (clickedNode && e.shiftKey) {
+                Engine.interaction.isShiftDragging = true;
+                Engine.interaction.dragStartNode = clickedNode;
+                return;
+            }
+
+            isMouseDown = true; hasDragged = false;
+            lastX = e.clientX; lastY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            Engine.interaction.currentMouseX = e.clientX - rect.left;
+            Engine.interaction.currentMouseY = e.clientY - rect.top;
+
+            if (Engine.interaction.isShiftDragging || !isMouseDown) return;
+            const dx = e.clientX - lastX, dy = e.clientY - lastY;
+            if (Math.hypot(dx, dy) > 2) hasDragged = true;
+            Engine.camera.rotY += dx * 0.005;
+            Engine.camera.rotX += dy * 0.005;
+            lastX = e.clientX; lastY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (Engine.interaction.isShiftDragging && Engine.interaction.dragStartNode) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+                let targetNode = null;
+                Engine.nodes.forEach(n => {
+                    const p = project3D(n.x, n.y, n.z);
+                    if (Math.hypot(mouseX - p.px, mouseY - p.py) < 18) targetNode = n;
+                });
+                if (targetNode && targetNode !== Engine.interaction.dragStartNode) {
+                    Engine.bonds.push({ from: Engine.interaction.dragStartNode, to: targetNode, isCustom: true });
+                }
+                Engine.interaction.isShiftDragging = false; Engine.interaction.dragStartNode = null;
+                return;
+            }
+            isMouseDown = false;
+        });
+
+        canvas.addEventListener('click', e => {
+            if (hasDragged) return;
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
+            let clicked = null;
+            Engine.nodes.forEach(n => {
+                const p = project3D(n.x, n.y, n.z);
+                if (Math.hypot(clickX - p.px, clickY - p.py) < 16) clicked = n;
+            });
+            if (clicked) {
+                Engine.selectedNode = clicked;
+            } else {
+                Engine.selectedNode = null;
+                const w = {
+                    x: (e.clientX - rect.left - canvas.width/2 - 120) / Engine.camera.scale,
+                    y: (e.clientY - rect.top - canvas.height/2) / Engine.camera.scale,
+                    z: 0
+                };
+                Engine.nodes.push(createNode(w.x, w.y, w.z));
+            }
+        });
+
+        // Render Loop
+        let lastTime = performance.now();
+        function render(time) {
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            ctx.fillStyle = '#060810';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const nCenter = project3D(0, 0, 0);
+            const dynScale = Engine.camera.scale / 180;
+            const manifold = Engine.params.manifold;
+
+            // Background Manifold 3D Reference
+            if (manifold === "AdS Hypersphere (Spherical)") {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+                ctx.lineWidth = 1;
+                for (let r = 50; r <= 220; r += 50) {
+                    ctx.beginPath(); ctx.arc(nCenter.px, nCenter.py, r * dynScale, 0, Math.PI * 2); ctx.stroke();
+                }
+            } else if (manifold === "Cubic Lattice") {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+                ctx.lineWidth = 1;
+                const sz = 120 * dynScale;
+                ctx.strokeRect(nCenter.px - sz, nCenter.py - sz, sz * 2, sz * 2);
+            }
+
+            // Update Nodes
+            Engine.nodes.forEach(n => n.update(Engine.params.drift));
+
+            // Draw Bonds
+            Engine.bonds.forEach(b => {
+                const p1 = project3D(b.from.x, b.from.y, b.from.z);
+                const p2 = project3D(b.to.x, b.to.y, b.to.z);
+                if (b.isCustom) {
+                    const dist = Math.hypot(b.from.x - b.to.x, b.from.y - b.to.y, b.from.z - b.to.z);
+                    ctx.strokeStyle = dist > 2.5 ? '#ef4444' : (dist > 1.5 ? '#f97316' : '#22c55e');
+                    ctx.lineWidth = 1.6;
+                } else {
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+                    ctx.lineWidth = 1;
+                }
+                ctx.beginPath(); ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.stroke();
+            });
+
+            // Draw Nodes with pinpoint sizing (.2 pscale)
+            Engine.nodes.forEach((n, idx) => {
+                const p = project3D(n.x, n.y, n.z);
+                const auraRadius = Math.max(8, 22 * p.scale);
+
+                const nodeGrad = ctx.createRadialGradient(p.px, p.py, 0.5, p.px, p.py, auraRadius);
+                nodeGrad.addColorStop(0, 'rgba(168, 85, 247, 0.55)');
+                nodeGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = nodeGrad;
+                ctx.beginPath(); ctx.arc(p.px, p.py, auraRadius, 0, Math.PI * 2); ctx.fill();
+
+                if (n === Engine.selectedNode) {
+                    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.arc(p.px, p.py, Math.max(2, 0.2 * p.scale) + 4, 0, Math.PI * 2); ctx.stroke();
+                }
+
+                ctx.fillStyle = (Engine.params.lens === "Fault Diagnostics (Orange)" && idx % 3 === 0) ? '#f97316' : '#38bdf8';
+                ctx.beginPath(); ctx.arc(p.px, p.py, Math.max(1, 0.2 * p.scale), 0, Math.PI * 2); ctx.fill();
+            });
+
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>
