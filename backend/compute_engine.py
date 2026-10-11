@@ -1,8 +1,10 @@
 # backend/compute_engine.py
 import json
 import numpy as np
+import jax
 import jax.numpy as jnp
 
+@jax.jit
 def compute_advanced_tensors(coords: jnp.ndarray, params: dict):
     n_nodes = coords.shape[0]
     if n_nodes < 2:
@@ -39,6 +41,20 @@ def compute_topology_metrics(nodes):
         "integrity": 100,
         "s_ee": round(s_ee, 2),
         "phi": round(phi, 2)
+    }
+def optimized_step_telemetry(node_positions):
+    # Example vectorised distance & curvature metrics computation
+    diff = node_positions[:, None, :] - node_positions[None, :, :]
+    dist_matrix = jnp.sqrt(jnp.sum(diff ** 2, axis=-1) + 1e-8)
+    
+    # Ricci scalar / curvature approximation
+    ricci_scalar = jnp.mean(dist_matrix)
+    max_ricci = jnp.max(dist_matrix)
+    
+    return {
+        "timestamp": jnp.array(0.0), # handled by system clock or passthrough
+        "mean_ricci_scalar": ricci_scalar,
+        "max_ricci_scalar": max_ricci
     }
 
 if __name__ == "__main__":
