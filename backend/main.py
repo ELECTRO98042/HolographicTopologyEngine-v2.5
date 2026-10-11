@@ -143,6 +143,27 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
         while True:
             start_time = time.time()
 
+            # Non-blocking check for incoming client messages (e.g., node drag updates)
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+                control_packet = json.loads(data)
+                if control_packet.get("action") == "update_nodes":
+                    nodes = control_packet.get("nodes", [])
+                    if nodes:
+                    # Safely extract x, y, and default z to prevent KeyError crashes
+                        base_coords_in = jnp.array(
+                            [[n.get("x", 0.0), n.get("y", 0.0), n.get("z", 0.0)] for n in nodes], 
+                            dtype=jnp.float64
+                        )
+                        current_active_node_positions = jnp.pad(
+                            base_coords_in, 
+                            ((0, 0), (0, max(0, 4 - base_coords_in.shape[1]))), 
+                            constant_values=1.0
+                        )
+            except asyncio.TimeoutError:
+                pass
+
+            # Compute telemetry metrics continuously at 60Hz
             base_coords = current_active_node_positions[:, :3]
 
             s_ee = float(jnp.sum(base_coords[:, 0]) * 0.01)
@@ -163,21 +184,7 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
 
             await manager.send_text_json(hud_metadata, websocket)
             
-            try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
-                control_packet = json.loads(data)
-                if control_packet.get("action") == "update_nodes":
-                    nodes = control_packet.get("nodes", [])
-                    if nodes:
-                        base_coords_in = jnp.array([[n["x"], n["y"], n["z"]] for n in nodes], dtype=jnp.float64)
-                        current_active_node_positions = jnp.pad(
-                            base_coords_in, 
-                            ((0, 0), (0, max(0, 4 - base_coords_in.shape[1]))), 
-                            constant_values=1.0
-                        )
-            except asyncio.TimeoutError:
-                pass
-                
+            # Maintain a strict 60Hz cadence
             elapsed = time.time() - start_time
             sleep_duration = max(0.0, (1.0 / 60.0) - elapsed)
             await asyncio.sleep(sleep_duration)
