@@ -1,6 +1,24 @@
 # backend/compute_engine.py
 import json
 import numpy as np
+import jax.numpy as jnp
+
+def compute_advanced_tensors(coords: jnp.ndarray, params: dict):
+    n_nodes = coords.shape[0]
+    if n_nodes < 2:
+        return 0.0, 0.0
+
+    diff = coords[:, None, :] - coords[None, :, :]
+    dist_matrix = jnp.sqrt(jnp.sum(diff ** 2, axis=-1) + 1e-8)
+
+    coord_mean = jnp.mean(coords, axis=0)
+    variance = jnp.mean(jnp.sum((coords - coord_mean) ** 2, axis=-1))
+    bulk_curvature = float(jnp.tanh(variance * 0.01) * 1.5)
+
+    coupling = params.get("coupling_constant", 0.1)
+    complexity = float(jnp.sum(dist_matrix) * coupling * 1.25)
+
+    return bulk_curvature, complexity
 
 def compute_topology_metrics(nodes):
     """Computes basic adjacency, distance matrices, and mock entanglement entropy S(EE)."""

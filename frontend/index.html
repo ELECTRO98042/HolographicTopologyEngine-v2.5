@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Holographic Topology Engine HUD v2.5</title>
@@ -11,10 +12,12 @@
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
         }
+
         #hud-container {
             position: absolute;
             top: 20px;
             left: 20px;
+            width: 290px;
             background: rgba(5, 5, 10, 0.85);
             border: 1px solid #00ffcc;
             padding: 15px;
@@ -22,25 +25,30 @@
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
             pointer-events: none;
         }
+
         h1 {
             font-size: 16px;
             margin: 0 0 10px 0;
             letter-spacing: 2px;
             text-transform: uppercase;
         }
+
         .metric-row {
             font-size: 14px;
             margin: 5px 0;
         }
+
         .metric-value {
             color: #ff0055;
             font-weight: bold;
         }
+
         canvas {
             display: block;
         }
     </style>
 </head>
+
 <body>
 
     <div id="hud-container">
@@ -91,7 +99,7 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await response.json();
-                
+
                 document.getElementById('val-integrity').innerText = data.integrity;
                 document.getElementById('val-see').innerText = data.s_ee;
                 document.getElementById('val-phi').innerText = data.phi;
@@ -159,7 +167,40 @@
         setInterval(sendTelemetry, 500);
 
         // Start animation loop
+        let selectedNode = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Iterate through nodes to check if click is within selection radius
+            for (let node of nodes) {
+                const dx = node.x - mouseX;
+                const dy = node.y - mouseY;
+                if (Math.sqrt(dx * dx + dy * dy) < 20) {
+                    selectedNode = node;
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!selectedNode) return;
+
+            const rect = canvas.getBoundingClientRect();
+            selectedNode.x = e.clientX - rect.left;
+            selectedNode.y = e.clientY - rect.top;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (selectedNode) {
+                selectedNode = null;
+                // Optional: trigger an immediate telemetry sync call here if desired
+            }
+        });
         loop();
     </script>
 </body>
+
 </html>
