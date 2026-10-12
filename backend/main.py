@@ -148,12 +148,21 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
             # Increment phase smoothly each tick (e.g., 60Hz delta)
             phase += 0.05
 
-            # Compute continuous orbital offset using accumulated phase
-            updated_coords = current_active_node_positions.at[:, 0].add(jnp.sin(phase) * 20.0)
-            updated_coords = updated_coords.at[:, 1].add(jnp.cos(phase) * 20.0)
-
-            binary_payload = updated_coords.astype(jnp.float32).tobytes()
-            await manager.send_binary(binary_payload, websocket)
+            # If nodes have been initialized, apply independent node-specific orbital motion
+            if current_active_node_positions.shape[0] > 0:
+                num_nodes = current_active_node_positions.shape[0]
+                indices = jnp.arange(num_nodes, dtype=jnp.float64)
+                
+                # Stagger each node's phase index-wise to break rigid-body locking
+                node_phases = phase + (indices * 2.0)
+                
+                x_offsets = jnp.sin(node_phases) * 15.0
+                y_offsets = jnp.cos(node_phases * 1.3) * 15.0  # Asymmetric multiplier for organic wandering
+                
+                updated_coords = current_active_node_positions.at[:, 0].add(x_offsets)
+                updated_coords = updated_coords.at[:, 1].add(y_offsets)
+            else:
+                updated_coords = current_active_node_positions
 
             # Non-blocking check for incoming client messages (e.g., node drag updates)
             try:
@@ -162,7 +171,6 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
                 if control_packet.get("action") == "update_nodes":
                     nodes = control_packet.get("nodes", [])
                     if nodes:
-                    # Safely extract x, y, and default z to prevent KeyError crashes
                         base_coords_in = jnp.array(
                             [[n.get("x", 0.0), n.get("y", 0.0), n.get("z", 0.0)] for n in nodes], 
                             dtype=jnp.float64
@@ -172,6 +180,7 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
                             ((0, 0), (0, max(0, 4 - base_coords_in.shape[1]))), 
                             constant_values=1.0
                         )
+                        updated_coords = current_active_node_positions
             except asyncio.TimeoutError:
                 pass
 
@@ -183,7 +192,8 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
             integrity = int(max(0, min(100, 100 - (base_coords.shape[0] * 2))))
             
             telemetry = pipeline.step_telemetry(current_active_node_positions)
-            
+
+            # Send HUD metadata JSON
             hud_metadata = {
                 "type": "hud_update",
                 "timestamp": telemetry["timestamp"],
@@ -194,7 +204,9 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
                 "avg_curvature": telemetry["mean_ricci_scalar"]
             }
             await manager.send_text_json(hud_metadata, websocket)
-            binary_payload = current_active_node_positions.astype(jnp.float32).tobytes()
+
+            # Send single authoritative binary tensor frame
+            binary_payload = updated_coords.astype(jnp.float32).tobytes()
             await manager.send_binary(binary_payload, websocket)
             # Maintain a strict 60Hz cadence
             elapsed = time.time() - start_time
