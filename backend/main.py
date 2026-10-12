@@ -139,9 +139,21 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
     global current_active_node_positions
     await manager.connect(websocket)
     
+    # Initialize a phase accumulator outside the while loop (above try:)
+    phase = 0.0
+
     try:
         while True:
             start_time = time.time()
+            # Increment phase smoothly each tick (e.g., 60Hz delta)
+            phase += 0.05
+
+            # Compute continuous orbital offset using accumulated phase
+            updated_coords = current_active_node_positions.at[:, 0].add(jnp.sin(phase) * 20.0)
+            updated_coords = updated_coords.at[:, 1].add(jnp.cos(phase) * 20.0)
+
+            binary_payload = updated_coords.astype(jnp.float32).tobytes()
+            await manager.send_binary(binary_payload, websocket)
 
             # Non-blocking check for incoming client messages (e.g., node drag updates)
             try:

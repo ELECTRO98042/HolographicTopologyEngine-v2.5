@@ -81,11 +81,12 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Sample simulation nodes
+        //Sample simulation nodes
+        //1. Initialize nodes with base coordinates for independent wandering/orbiting
         let nodes = [
-            { id: "N-001", x: canvas.width * 0.4, y: canvas.height * 0.4, z: 0.28, isCore: true, isSevered: false, health: 1 },
-            { id: "N-002", x: canvas.width * 0.6, y: canvas.height * 0.5, z: 0.50, isCore: false, isSevered: false, health: 1 },
-            { id: "N-003", x: canvas.width * 0.5, y: canvas.height * 0.7, z: 0.12, isCore: false, isSevered: false, health: 1 }
+            { id: "N-001", baseX: 320, baseY: 240, x: 320, y: 240, angle: Math.random() * Math.PI * 2, speed: 0.015, radius: 25, z: 0.28, isCore: true, isSevered: false, health: 1 },
+            { id: "N-002", baseX: 480, baseY: 300, x: 480, y: 300, angle: Math.random() * Math.PI * 2, speed: 0.022, radius: 30, z: 0.50, isCore: false, isSevered: false, health: 1 },
+            { id: "N-003", baseX: 400, baseY: 420, x: 400, y: 420, angle: Math.random() * Math.PI * 2, speed: 0.018, radius: 20, z: 0.12, isCore: false, isSevered: false, health: 1 }
         ];
 
         let simulationParams = {
@@ -117,13 +118,17 @@
                 console.error("Telemetry sync error:", err);
             }
         }
-
+        
+        // 2. The proper update loop using unique phase offsets per node
         function updateNodes() {
-            // Slight orbital drift for visualization dynamism
-            const time = Date.now() * 0.001;
+            
+            const time = Date.now() * 0.0002; // Slow down time for smoother motion
             nodes.forEach((node, i) => {
-                node.x += Math.sin(time + i) * 0.5;
-                node.y += Math.cos(time + i) * 0.5;
+                // Each node updates using its own unique speed and phase, 
+                // oscillating around its own stable base coordinates.
+                node.angle += node.speed * 0.3; // Adjust speed multiplier for smoother motion
+                node.x = node.baseX + Math.sin(node.angle + i) * node.radius * 1.5;
+                node.y = node.baseY + Math.cos(node.angle * 1.3) * node.radius * 1.5; // asymmetric multiplier prevents rigid shape locking
             });
         }
 
@@ -135,6 +140,9 @@
             ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)';
             ctx.lineWidth = 1;
             const gridSize = 50;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2; 
+
             for (let x = 0; x < canvas.width; x += gridSize) {
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
@@ -166,12 +174,78 @@
                 ctx.fillText(node.id, node.x + 10, node.y + 4);
             });
         }
+        class Node {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                // Give each node its own unique, independent velocity vector
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
 
-        function loop() {
-            draw();
-            requestAnimationFrame(loop);
-        }
+                // Alternatively, for independent orbital/wandering motion without rigid locking,
+                // assign individual phase offsets or frequencies:
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = 0.02 + Math.random() * 0.02;
+                this.radiusOffset = 20 + Math.random() * 30;
+                this.centerX = x;
+                this.centerY = y;
+                }
 
+                update(time) {
+                    // Option A: True free-form movement / wandering
+                    // this.x += this.vx;
+                    // this.y += this.vy;
+
+                    // Option B: Independent orbital motion using unique phase/speed offsets
+                    this.angle += this.speed;
+                    this.x = this.centerX + Math.cos(this.angle) * this.radiusOffset;
+                    this.y = this.centerY + Math.sin(this.angle * 1.3) * this.radiusOffset; // asymmetric multiplier prevents rigid shape locking
+                }
+            }
+        
+
+        function updateNodes() {
+                const time = Date.now() * 0.0002;
+                nodes.forEach((node, i) => {
+                    node.angle += node.speed * 0.3;
+                    node.x = node.baseX + Math.sin(node.angle + i) * (node.radius * 1.5);
+                    node.y = node.baseY + Math.cos(node.angle * 1.3) * (node.radius * 1.5);
+                });
+            }
+
+        function animationLoop() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Update node positions independently
+                updateNodes();
+                // Then draw your grid, connections, and nodes as normal...
+                draw();
+                requestAnimationFrame(animationLoop);
+                // Update each node state independently
+                //nodes.forEach((node, index) => {
+                //    node.update();
+
+                    // Draw node
+                //    ctx.beginPath();
+                //    ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
+                //    ctx.fillStyle = '#00ff66';
+                //    ctx.fill();
+
+                    // Draw label coordinates
+                //    ctx.fillText(`ID-${index}`, node.x + 8, node.y - 8);
+                //});
+
+                // Optional: Draw connecting topological lines between the independent nodes
+                //ctx.beginPath();
+                //ctx.moveTo(nodes[0].x, nodes[0].y);
+                //for (let i = 1; i < nodes.length; i++) {
+                //    ctx.lineTo(nodes[i].x, nodes[i].y);
+                //}
+                //ctx.closePath();
+                //ctx.strokeStyle = 'rgba(0, 255, 102, 0.4)';
+                //ctx.stroke();
+            }
+            
+        requestAnimationFrame(animationLoop);
         // Poll telemetry every 500ms
         //setInterval(sendTelemetry, 500);
 
