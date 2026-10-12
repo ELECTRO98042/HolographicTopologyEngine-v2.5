@@ -3,6 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
+    <div id="hud-container">
+        <h3>HOLOGRAPHIC HUD V2.6</h3>
+        <div class="hud-integrity">System Integrity: 100%</div>
+        <div class="hud-ee">Entanglement ($S_{ee}$): 0.0</div>
+        <div class="hud-phi">Integrated Info ($\Phi$): 0.0</div>
+    </div>
     <title>Holographic Topology Engine HUD v2.5</title>
     <style>
         body {
@@ -17,7 +23,8 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 290px;
+            height: auto;
+            width: 320px;
             background: rgba(5, 5, 10, 0.85);
             border: 1px solid #00ffcc;
             padding: 15px;
@@ -51,18 +58,21 @@
 
 <body>
 
-    <div id="hud-container">
-        <h1>Holographic HUD v2.5</h1>
-        <div class="metric-row">System Integrity: <span id="val-integrity" class="metric-value">--</span></div>
-        <div class="metric-row">Entanglement ($S_{ee}$): <span id="val-see" class="metric-value">--</span></div>
-        <div class="metric-row">Integrated Info ($\Phi$): <span id="val-phi" class="metric-value">--</span></div>
-    </div>
-
     <canvas id="hudCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('hudCanvas');
         const ctx = canvas.getContext('2d');
+        
+        function updateHUD(packet) {
+                const integrityEl = document.querySelector('.hud-integrity');
+                const eeEl = document.querySelector('.hud-ee');
+                const phiEl = document.querySelector('.hud-phi');
+
+                if (integrityEl) integrityEl.textContent = `System Integrity: ${packet.integrity}%`;
+                if (eeEl) eeEl.textContent = `Entanglement ($S_{ee}$): ${packet.s_ee}`;
+                if (phiEl) phiEl.textContent = `Integrated Info ($\\Phi$): ${packet.phi}`;
+            }
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -158,7 +168,6 @@
         }
 
         function loop() {
-            updateNodes();
             draw();
             requestAnimationFrame(loop);
         }
@@ -184,22 +193,25 @@
                     }
                 }
             });
-            
-            lastSendTime = 0;
-            canvas.addEventListener('mousemove', (e) => {
-                if (!selectedNode) return;
-                const rect = canvas.getBoundingClientRect();
-                selectedNode.x = e.clientX - rect.left;
-                selectedNode.y = e.clientY - rect.top;
 
-                // Stream updated node positions to the backend immediately
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        action: "update_nodes",
-                        nodes: nodes.map(n => ({ id: n.id, x: n.x, y: n.y }))
-                    }));
-                }
-            });
+            let lastSendTime = 0;
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!selectedNode) return;
+                    const rect = canvas.getBoundingClientRect();
+                    selectedNode.x = e.clientX - rect.left;
+                    selectedNode.y = e.clientY - rect.top;
+
+                    const now = performance.now();
+                    if (now - lastSendTime > 16) {
+                        lastSendTime = now;
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                action: "update_nodes",
+                                nodes: nodes.map(n => ({ id: n.id, x: n.x, y: n.y }))
+                            }));
+                        }
+                    }
+                });
 
             canvas.addEventListener('mouseup', () => {
                 selectedNode = null;
@@ -219,23 +231,24 @@
                     }));
                 };
 
-            ws.onmessage = (event) => {
-                try {
-                    const packet = JSON.parse(event.data);
+            ws.binaryType = "arraybuffer";
 
-                    if (packet.type === "hud_update") {
-                        const integrityEl = document.getElementById("val-integrity");
-                        const sEeEl = document.getElementById("val-see");
-                        const phiEl = document.getElementById("val-phi");
-
-                        if (integrityEl) integrityEl.innerText = `${packet.integrity}%`;
-                        if (sEeEl) sEeEl.innerText = packet.s_ee.toFixed(4);
-                        if (phiEl) phiEl.innerText = packet.phi.toFixed(4);
-                    }
-                } catch (err) {
-                    console.error("Failed to parse telemetry packet:", err);
-                }
-            };
+                ws.onmessage = function (event) {
+                        if (event.data instanceof ArrayBuffer) {
+                            const floatArray = new Float32Array(event.data);
+                            // Each node takes 4 floats: x, y, z, pad
+                            for (let i = 0; i < nodes.length && (i * 4 + 1) < floatArray.length; i++) {
+                                nodes[i].x = floatArray[i * 4];
+                                nodes[i].y = floatArray[i * 4 + 1];
+                                nodes[i].z = floatArray[i * 4 + 2];
+                            }
+                        } else {
+                            const packet = JSON.parse(event.data);
+                            if (packet.type === "hud_update") {
+                                updateHUD(packet);
+                            }
+                        }
+                    };
 
             ws.onclose = () => {
                 console.warn("Holographic HUD WebSocket Disconnected. Reconnecting...");

@@ -1,0 +1,28 @@
+// ==========================================
+// HOLOGRAPHIC TOPOLOGY ENGINE - ARCHITECTURE v2.5
+// ==========================================
+
+// [MODULE 1: STATE & CONFIGURATION]
+// - Global simulation constants, physics coefficients, node/bond arrays, camera rotation (rotX, rotY)
+// - Telemetry data structures and export buffers
+
+// [MODULE 2: PHYSICS & MANIFOLD SIMULATION]
+// - Space-time curvature calculations (kCurvature)
+// - Velocity damping, drift speed, and boundary containment math
+// - Autonomous node update loop (n.update)
+
+// [MODULE 3: 3D PROJECTION & RENDER PIPELINE]
+// - Camera transformation matrix (world coords -> projected screen coords: px, py, scale)
+// - Canvas rendering engine (nodes, bonds, core rings, background HUD grid)
+
+// [MODULE 4: INPUT & INTERACTION MANAGER]
+// - Mouse / Touch tracking (mousedown, mousemove, mouseup)
+// - Gimbal / Camera rotation logic (drag panning)
+// - Precise raycasting / collision testing for selecting nodes
+// - Shift-drag entanglement bonding
+// - Clean background canvas click-to-spawn (Inverse projection node injection)
+
+// [MODULE 5: TELEMETRY & UI BRIDGE]
+// - Real-time HUD updates (FPS, node count, active bonds)
+// - Data feed synchronization for external/secondary windows
+// - CSV / JSON export handlers

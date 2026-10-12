@@ -49,7 +49,8 @@ class TelemetryStreamingPipeline:
             "mean_ricci_scalar": float(jnp.mean(ricci_scalars)),
             "dlpack_capsule": dlpack_capsule
         }
-        
+        import time as ptime
+        t = ptime.time() * 1.0
         return telemetry_packet
 
 # Instantiate pipeline during application startup
@@ -71,7 +72,6 @@ class ConnectionManager:
 
     async def send_binary(self, data: bytes, websocket: WebSocket):
         await websocket.send_bytes(data)
-
 manager = ConnectionManager()
 
 # Global state tracking for active simulation nodes per session/server instance
@@ -181,9 +181,9 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
                 "max_curvature": telemetry["max_ricci_scalar"],
                 "avg_curvature": telemetry["mean_ricci_scalar"]
             }
-
             await manager.send_text_json(hud_metadata, websocket)
-            
+            binary_payload = current_active_node_positions.astype(jnp.float32).tobytes()
+            await manager.send_binary(binary_payload, websocket)
             # Maintain a strict 60Hz cadence
             elapsed = time.time() - start_time
             sleep_duration = max(0.0, (1.0 / 60.0) - elapsed)
