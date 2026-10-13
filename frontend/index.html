@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Holographic Topology Engine HUD v2.6</title>
+    <title>Holographic Topology Engine HUD v2.6.8</title>
     <style>
         body {
             margin: 0;
@@ -50,35 +50,314 @@
         canvas {
             display: block;
         }
+
+        /* Spatial Control Deck Styling (v2.6.8) */
+        #spatial-control-deck {
+            position: absolute;
+            top: 145px;
+            left: 20px;
+            width: 300px;
+            background: rgba(5, 5, 10, 0.95);
+            border: 1px solid #00ffcc;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #00ffcc;
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.15);
+            font-size: 11px;
+        }
+
+        .deck-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 255, 204, 0.1);
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .deck-header h3 {
+            margin: 0;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        #deck-collapse-btn {
+            background: transparent;
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            font-weight: bold;
+            line-height: 14px;
+            text-align: center;
+        }
+
+        .deck-body {
+            padding: 10px 12px;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+
+        .deck-section {
+            margin-bottom: 8px;
+        }
+
+        .control-field {
+            margin-bottom: 6px;
+        }
+
+        .control-field label, .section-label, .slider-group label {
+            display: block;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #00ffccaa;
+            margin-bottom: 2px;
+        }
+
+        .control-field select {
+            width: 100%;
+            background: #05050a;
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            padding: 5px;
+            font-family: inherit;
+            font-size: 10px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .deck-divider {
+            border: none;
+            border-top: 1px solid rgba(0, 255, 204, 0.2);
+            margin: 8px 0;
+        }
+
+        .slider-group {
+            margin-bottom: 6px;
+        }
+
+        .slider-label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #00ffccaa;
+            margin-bottom: 2px;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            accent-color: #00ffcc;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .overlay-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+
+        .overlay-toggle {
+            background: rgba(5, 5, 10, 0.8);
+            border: 1px solid rgba(0, 255, 204, 0.4);
+            color: #00ffcc;
+            font-size: 9px;
+            padding: 5px 2px;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 2px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .overlay-toggle.active {
+            background: rgba(0, 255, 204, 0.3);
+            border-color: #00ffcc;
+            color: #fff;
+            box-shadow: 0 0 5px rgba(0, 255, 204, 0.5);
+        }
+
+        .action-matrix {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+
+        .action-btn {
+            background: rgba(0, 255, 204, 0.08);
+            border: 1px solid rgba(0, 255, 204, 0.4);
+            color: #00ffcc;
+            font-family: inherit;
+            font-size: 9px;
+            padding: 5px 2px;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 255, 204, 0.25);
+            border-color: #00ffcc;
+        }
+
+        .deck-dock-buffer {
+            margin-top: 8px;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(0, 255, 204, 0.2);
+            text-align: center;
+        }
+
+        .buffer-text {
+            font-size: 9px;
+            color: #00ffcc66;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 
 <body>
     <!-- Primary Telemetry HUD -->
     <div id="hud-container">
-        <h3>HOLOGRAPHIC HUD V2.6</h3>
+        <h3>HOLOGRAPHIC HUD V2.6.8</h3>
         <div class="hud-integrity">System Integrity: 100%</div>
         <div class="hud-ee">Entanglement (See): 0.0</div>
         <div class="hud-phi">Integrated Info (Phi): 0.0</div>
     </div>
 
-    <!-- Topology Control Panel (Stacked Beneath Telemetry HUD) -->
-    <div id="topology-hud"
-        style="position: absolute; top: 145px; left: 20px; background: rgba(5, 5, 10, 0.95); border: 1px solid #00ffcc; padding: 12px; font-family: 'Courier New', monospace; color: #00ffcc; z-index: 100; font-size: 11px; width: 240px; height: auto; box-shadow: 0 0 15px rgba(0,255,204,0.15);">
-        <div style="margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #00ffcc55; padding-bottom: 4px;">
-            TOPOLOGY CONTROL
+    <!-- Spatial Control Deck (Replacing Topology Control Panel) -->
+    <div id="spatial-control-deck">
+        <div class="deck-header">
+            <h3>Spatial Control Deck</h3>
+            <button id="deck-collapse-btn" title="Toggle Deck">−</button>
         </div>
-        <div style="margin-bottom: 4px; font-size: 10px; color: #00ffccaa;">REFERENCE SHAPE:</div>
-        <select id="topologySelect" onchange="window.setTopologyMode(this.value)"
-            style="width: 100%; background: #05050a; color: #00ffcc; border: 1px solid #00ffcc; font-family: 'Courier New', monospace; font-size: 10px; padding: 6px; cursor: pointer;">
-            <option value="open">Open Space</option>
-            <option value="spheroid">Spheroid</option>
-            <option value="cubed">Cubed</option>
-            <option value="toroidal">Toroidal</option>
-        </select>
+        
+        <div class="deck-body" id="deck-body-content">
+            <!-- 1. Spatial & Visual Reference (Dropdowns) -->
+            <div class="deck-section">
+                <div class="control-field">
+                    <label>Reference Frame</label>
+                    <select id="ref-frame-select" onchange="window.setTopologyMode(this.value)">
+                        <option value="open">Open Space (Default)</option>
+                        <option value="spheroid">Spheroid</option>
+                        <option value="cubed">Cubed</option>
+                        <option value="toroidal">Toroidal</option>
+                    </select>
+                </div>
+
+                <div class="control-field">
+                    <label>Telemetry Stream Filter</label>
+                    <select id="stream-filter-select">
+                        <option value="all">All Channels (Active)</option>
+                        <option value="primary">Primary Array Only</option>
+                        <option value="anomaly">Anomaly Filtered</option>
+                    </select>
+                </div>
+
+                <div class="control-field">
+                    <label>Data Interpolation Mode</label>
+                    <select id="interpolation-select">
+                        <option value="linear">Linear</option>
+                        <option value="spline">Spline</option>
+                        <option value="discrete">Discrete Step</option>
+                    </select>
+                </div>
+
+                <div class="control-field">
+                    <label>Color Palette / Schema</label>
+                    <select id="palette-select">
+                        <option value="scifi">High-Contrast Sci-Fi</option>
+                        <option value="thermal">Thermal</option>
+                        <option value="monochrome">Monochrome</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="deck-divider">
+
+            <!-- 2. Dynamic Scaling & Operations (Sliders) -->
+            <div class="deck-section">
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label>World Scale / Extent</label>
+                        <span id="val-world-scale">1.0</span>
+                    </div>
+                    <input type="range" id="slider-world-scale" min="0.5" max="3.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label>Grid Resolution / Density</label>
+                        <span id="val-grid-density">10</span>
+                    </div>
+                    <input type="range" id="slider-grid-density" min="5" max="30" step="1" value="10">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label>Temporal Motion Speed</label>
+                        <span id="val-motion-speed">1.0x</span>
+                    </div>
+                    <input type="range" id="slider-motion-speed" min="0.0" max="5.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label>Signal Noise Threshold</label>
+                        <span id="val-noise-thresh">0.05</span>
+                    </div>
+                    <input type="range" id="slider-noise-thresh" min="0.0" max="0.5" step="0.01" value="0.05">
+                </div>
+            </div>
+
+            <hr class="deck-divider">
+
+            <!-- 3. Signal Stress Testing (Interference Overlays - 2x3 Grid) -->
+            <div class="deck-section">
+                <label class="section-label">Interference Overlays</label>
+                <div class="overlay-grid">
+                    <button class="overlay-toggle" data-overlay="thermal">Thermal</button>
+                    <button class="overlay-toggle" data-overlay="wave">Wave Interf.</button>
+                    <button class="overlay-toggle" data-overlay="emp">EMP Dist.</button>
+                    <button class="overlay-toggle" data-overlay="atmos">Atmospheric</button>
+                    <button class="overlay-toggle" data-overlay="doppler">Doppler</button>
+                    <button class="overlay-toggle" data-overlay="multipath">Multipath</button>
+                </div>
+            </div>
+
+            <hr class="deck-divider">
+
+            <!-- 4. Data Persistence & State Control (Action Matrix) -->
+            <div class="deck-section action-matrix">
+                <div class="button-group export-group">
+                    <button id="btn-export-json" class="action-btn">JSON Config</button>
+                    <button id="btn-export-csv" class="action-btn">CSV Data</button>
+                    <button id="btn-export-dot" class="action-btn">DOT Graph</button>
+                </div>
+                <div class="button-group state-group">
+                    <button id="btn-pin-all" class="action-btn">Pin All</button>
+                    <button id="btn-release-all" class="action-btn">Release All</button>
+                    <button id="btn-reset-view" class="action-btn" onclick="window.resetCamera()">Reset View</button>
+                </div>
+            </div>
+
+            <!-- 5. Reserved Expansion Buffer -->
+            <div class="deck-dock-buffer">
+                <span class="buffer-text">[ Expansion Dock: v2.6.9 / v2.7.0 ]</span>
+            </div>
+        </div>
     </div>
 
-    <!-- 3D Gimbal Panel (Isolated to Bottom Right) -->
+    <!-- 3D Gimbal Panel (Isolated to Bottom Right)[cite: 1] -->
     <div id="gimbal-hud"
         style="position: absolute; bottom: 20px; right: 20px; background: rgba(5, 5, 10, 0.95); border: 1px solid #00ffcc; padding: 12px; font-family: 'Courier New', monospace; color: #00ffcc; z-index: 100; font-size: 11px; width: 220px; box-shadow: 0 0 15px rgba(0,255,204,0.15);">
         <div
@@ -95,7 +374,7 @@
     </div>
 
     <canvas id="hudCanvas"></canvas>
-
+    <!-- Main HUD Animation & WebSocket Script -->
     <script>
         const canvas = document.getElementById('hudCanvas');
         const ctx = canvas.getContext('2d');
@@ -107,51 +386,52 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Global Camera State
+        // Global Camera State[cite: 1]
         let camera = {
             rotX: 0.3,
             rotY: 0.0,
             rotZ: 0.0,
             distance: 800
         };
-        // Global Nodes Data (Restoring full 3-node baseline)
-            let nodes = [
-                { id: "N-001", x: 0, y: 0, z: 0, isCore: true },
-                { id: "N-002", x: 120, y: -40, z: 30, isCore: false },
-                { id: "N-003", x: -120, y: 60, z: -30, isCore: false }
-            ];
 
-        // 3D Projection Pipeline ( treating (0,0) as world center )
-            function project3D(x, y, z, width, height) {
-                const cx = x;
-                const cy = y;
-                const cz = z || 0.0; // Removed the * 200 scaling multiplier
+        // Global Nodes Data[cite: 1]
+        let nodes = [
+            { id: "N-001", x: 0, y: 0, z: 0, isCore: true },
+            { id: "N-002", x: 120, y: -40, z: 30, isCore: false },
+            { id: "N-003", x: -120, y: 60, z: -30, isCore: false }
+        ];
+        window.nodes = nodes; // Keep global reference synchronized
 
-                const cosY = Math.cos(camera.rotY), sinY = Math.sin(camera.rotY);
-                const x1 = cx * cosY - cz * sinY;
-                const z1 = cx * sinY + cz * cosY;
+        // 3D Projection Pipeline[cite: 1]
+        function project3D(x, y, z, width, height) {
+            const cx = x;
+            const cy = y;
+            const cz = z || 0.0;
 
-                const cosX = Math.cos(camera.rotX), sinX = Math.sin(camera.rotX);
-                const y1 = cy * cosX - z1 * sinX;
-                const z2 = cy * sinX + z1 * cosX;
+            const cosY = Math.cos(camera.rotY), sinY = Math.sin(camera.rotY);
+            const x1 = cx * cosY - cz * sinY;
+            const z1 = cx * sinY + cz * cosY;
 
-                const cosZ = Math.cos(camera.rotZ), sinZ = Math.sin(camera.rotZ);
-                const x2 = x1 * cosZ - y1 * sinZ;
-                const y2 = x1 * sinZ + y1 * cosZ;
+            const cosX = Math.cos(camera.rotX), sinX = Math.sin(camera.rotX);
+            const y1 = cy * cosX - z1 * sinX;
+            const z2 = cy * sinX + z1 * cosX;
 
-                const fov = camera.distance;
-                const scale = fov / (fov + z2 + 300);
+            const cosZ = Math.cos(camera.rotZ), sinZ = Math.sin(camera.rotZ);
+            const x2 = x1 * cosZ - y1 * sinZ;
+            const y2 = x1 * sinZ + y1 * cosZ;
 
-                return {
-                    px: width / 2 + x2 * scale,
-                    py: height / 2 + y2 * scale,
-                    scale: scale,
-                    depth: z2
-                };
-            }
+            const fov = camera.distance;
+            const scale = fov / (fov + z2 + 300);
 
+            return {
+                px: width / 2 + x2 * scale,
+                py: height / 2 + y2 * scale,
+                scale: scale,
+                depth: z2
+            };
+        }
 
-        // Topology Preset Generator
+        // Topology Preset Generator[cite: 1]
         window.setTopologyMode = function (mode) {
             const count = nodes.length > 0 ? nodes.length : 8;
             nodes = [];
@@ -190,14 +470,14 @@
             }
         };
 
-        // Reset Camera Handler
+        // Reset Camera Handler[cite: 1]
         window.resetCamera = function () {
             camera.rotX = 0.3;
             camera.rotY = 0.0;
             camera.rotZ = 0.0;
         };
 
-        // Interactive Gizmo Handle Logic
+        // Interactive Gizmo Handle Logic[cite: 1]
         const gizmoCanvas = document.getElementById('gizmoCanvas');
         gizmoCanvas.width = 192;
         gizmoCanvas.height = 100;
@@ -226,14 +506,7 @@
             gizmoLastY = e.clientY;
         });
 
-        window.addEventListener('mouseup', () => {
-                if (selectedNode && !selectedNode.isCore) {
-                    selectedNode.isPinned = true;
-                }
-                selectedNode = null;
-            });
-
-        // Render Gizmo Triad
+        // Render Gizmo Triad[cite: 1]
         function drawGizmo() {
             gCtx.fillStyle = '#020205';
             gCtx.fillRect(0, 0, gizmoCanvas.width, gizmoCanvas.height);
@@ -282,7 +555,7 @@
             if (phiEl) phiEl.textContent = `Integrated Info (Phi): ${packet.phi}`;
         }
 
-        // WebSocket Connection
+        // WebSocket Connection[cite: 1]
         const wsUrl = "ws://127.0.0.1:8000/ws/telemetry";
         const ws = new WebSocket(wsUrl);
         ws.binaryType = "arraybuffer";
@@ -296,104 +569,168 @@
         };
 
         ws.onmessage = function (event) {
-                if (event.data instanceof ArrayBuffer) {
-                    const floatArray = new Float32Array(event.data);
-                    for (let i = 0; i < nodes.length && (i * 4 + 1) < floatArray.length; i++) {
-                        if (!nodes[i].isPinned && nodes[i] !== selectedNode) {
-                            nodes[i].x = floatArray[i * 4];
-                            nodes[i].y = floatArray[i * 4 + 1];
-                            nodes[i].z = floatArray[i * 4 + 2];
-                        }
-                    }
-                } else {
-                    const packet = JSON.parse(event.data);
-                    if (packet.type === "hud_update") {
-                        updateHUD(packet);
+            if (event.data instanceof ArrayBuffer) {
+                const floatArray = new Float32Array(event.data);
+                for (let i = 0; i < nodes.length && (i * 4 + 1) < floatArray.length; i++) {
+                    if (!nodes[i].isPinned && nodes[i] !== selectedNode) {
+                        nodes[i].x = floatArray[i * 4];
+                        nodes[i].y = floatArray[i * 4 + 1];
+                        nodes[i].z = floatArray[i * 4 + 2];
                     }
                 }
-            };
+            } else {
+                const packet = JSON.parse(event.data);
+                if (packet.type === "hud_update") {
+                    updateHUD(packet);
+                }
+            }
+        };
 
         ws.onclose = () => {
             console.warn("Holographic HUD WebSocket Disconnected. Reconnecting...");
             setTimeout(() => location.reload(), 3000);
         };
-        // Global Interaction State (Declared ONCE at top-level)
-            let selectedNode = null;
-            let isDraggingGimbal = false;
-            let lastMouseX = 0;
-            let lastMouseY = 0;
 
-            function isInGimbalArea(x, y) {
-                    // Assuming the gimbal box sits roughly in the bottom-right corner:
-                    // e.g., canvas.width - 220 to canvas.width - 20, and canvas.height - 220 to canvas.height - 40
-                    return (
-                        x >= canvas.width - 220 &&
-                        x <= canvas.width - 20 &&
-                        y >= canvas.height - 220 &&
-                        y <= canvas.height - 40
-                    );
-                }
+        // Global Interaction State[cite: 1]
+        let selectedNode = null;
+        let isDraggingGimbal = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
 
-        // 3D Motion & Drift Calibration Loop
+        function isInGimbalArea(x, y) {
+            return (
+                x >= canvas.width - 220 &&
+                x <= canvas.width - 20 &&
+                y >= canvas.height - 220 &&
+                y <= canvas.height - 40
+            );
+        }
+
+        // 3D Motion & Drift Calibration Loop[cite: 1]
+        nodes.forEach(node => {
+                if (!node.drift) node.drift = { x: 0, z: 0, vx: 0, vz: 0 };
+            });
+
             function updateNodesMotion() {
-                    const time = performance.now() * 0.0003;
-                    nodes.forEach((node, index) => {
-                        // Skip core, currently dragged node, and any node pinned by the user
-                        if (!node.isCore && node !== selectedNode && !node.isPinned) {
-                            const baseAngle = time * (index === 1 ? 1 : -1) + (index * Math.PI);
-                            const radius = 120;
-                            node.x = Math.cos(baseAngle) * radius;
-                            node.z = Math.sin(baseAngle) * radius;
-                            node.y = 0;
+                const motionMultiplier = window.hudConfig ? window.hudConfig.motionSpeed : 1.0;
+                const scaleMultiplier = window.hudConfig ? window.hudConfig.worldScale : 1.0;
+                const noiseThresh = window.hudConfig ? window.hudConfig.noiseThreshold : 0.0;
+                const animTime = performance.now() * 0.0003 * motionMultiplier;
+
+                nodes.forEach((node, index) => {
+                    if (!node.isCore && node !== selectedNode && !node.isPinned) {
+                        const baseAngle = animTime * (index === 1 ? 1 : -1) + (index * Math.PI);
+                        const radius = 120 * scaleMultiplier;
+
+                        // Base orbital path
+                        node.x = Math.cos(baseAngle) * radius;
+                        node.z = Math.sin(baseAngle) * radius;
+
+                        // Persistent random walk / drift
+                        if (noiseThresh > 0) {
+                            if (!node.drift) node.drift = { x: 0, z: 0, vx: 0, vz: 0 };
+
+                            node.drift.vx += (Math.random() - 0.5) * noiseThresh * 2.0;
+                            node.drift.vz += (Math.random() - 0.5) * noiseThresh * 2.0;
+                            node.drift.vx *= 0.90; // Damping/friction
+                            node.drift.vz *= 0.90;
+
+                            node.drift.x += node.drift.vx;
+                            node.drift.z += node.drift.vz;
+
+                            const maxDrift = 40 * noiseThresh * scaleMultiplier;
+                            node.drift.x = Math.max(-maxDrift, Math.min(maxDrift, node.drift.x));
+                            node.drift.z = Math.max(-maxDrift, Math.min(maxDrift, node.drift.z));
+
+                            node.x += node.drift.x;
+                            node.z += node.drift.z;
+                        } else if (node.drift) {
+                            node.drift.x = 0; node.drift.z = 0;
+                            node.drift.vx = 0; node.drift.vz = 0;
                         }
-                    });
-                }
-
-        // Main Render Loop
-        function draw() {
-                ctx.fillStyle = '#05050a';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Execute motion and drift logic
-                updateNodesMotion();
-
-                // Project nodes using 3D camera matrix
-                let projectedNodes = nodes.map(node => {
-                    const p = project3D(node.x, node.y, node.z, canvas.width, canvas.height);
-                    return { ...node, px: p.px, py: p.py, scale: p.scale, depth: p.depth };
+                        node.y = 0;
+                    }
                 });
+            }
 
-                // World-Space Grid Floor (XZ plane positioned below nodes)
+        // Main Render Loop[cite: 1]
+        function draw() {
+            ctx.fillStyle = '#05050a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            updateNodesMotion();
+
+            let projectedNodes = nodes.map(node => {
+                const p = project3D(node.x, node.y, node.z, canvas.width, canvas.height);
+                return { ...node, px: p.px, py: p.py, scale: p.scale, depth: p.depth };
+            });
+
+            // World-Space Grid Floor[cite: 1]
             ctx.strokeStyle = 'rgba(0, 255, 204, 0.15)';
             ctx.lineWidth = 1;
-            const gridSteps = 10;
-            const span = 250;
-            const floorY = 80; // Positioned below the nodes (y = 0)
+            // Dynamic Grid Resolution / Density scaling
+            const gridSteps = window.hudConfig ? parseInt(window.hudConfig.gridDensity) : 10;
+            const scaleMultiplier = window.hudConfig ? window.hudConfig.worldScale : 1.0;
+            const span = 250 * scaleMultiplier; // World-view background scales in tandem with nodes!
+            const floorY = 80;
+            const overlays = window.hudConfig ? window.hudConfig.overlays : {};
+
+            // 1. Thermal Interference Overlay (Faint crimson/infrared radial gradient tint)
+            if (overlays.thermal) {
+                ctx.save();
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 50,
+                    canvas.width / 2, canvas.height / 2, canvas.width * 0.7
+                );
+                gradient.addColorStop(0, 'rgba(255, 50, 50, 0.0)');
+                gradient.addColorStop(1, 'rgba(180, 20, 20, 0.12)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
+            // 2. Wave Interference Overlay (Sinusoidal scanline modulation)
+            if (overlays.wave) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(0, 255, 204, 0.08)';
+                ctx.lineWidth = 1;
+                const timeVal = performance.now() * 0.002;
+                for (let y = 0; y < canvas.height; y += 12) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    for (let x = 0; x < canvas.width; x += 20) {
+                        const waveY = y + Math.sin(x * 0.02 + timeVal) * 4;
+                        ctx.lineTo(x, waveY);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // 3. Atmospheric Distortion Overlay (Subtle scanline haze)
+            if (overlays.atmos) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 255, 150, 0.03)';
+                const scanlineY = (performance.now() * 0.1) % canvas.height;
+                ctx.fillRect(0, scanlineY, canvas.width, 3);
+                ctx.restore();
+            }
 
             for (let i = -gridSteps; i <= gridSteps; i++) {
                 const coord = (i / gridSteps) * span;
-
-                // Lines parallel to Z axis
                 const p1 = project3D(coord, floorY, -span, canvas.width, canvas.height);
                 const p2 = project3D(coord, floorY, span, canvas.width, canvas.height);
                 if (p1.scale > 0 && p2.scale > 0) {
-                    ctx.beginPath();
-                    ctx.moveTo(p1.px, p1.py);
-                    ctx.lineTo(p2.px, p2.py);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.stroke();
                 }
-
-                // Lines parallel to X axis
                 const p3 = project3D(-span, floorY, coord, canvas.width, canvas.height);
                 const p4 = project3D(span, floorY, coord, canvas.width, canvas.height);
                 if (p3.scale > 0 && p4.scale > 0) {
-                    ctx.beginPath();
-                    ctx.moveTo(p3.px, p3.py);
-                    ctx.lineTo(p4.px, p4.py);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(p3.px, p3.py); ctx.lineTo(p4.px, p4.py); ctx.stroke();
                 }
             }
-            // 3D Connections
+
+            // 3D Connections[cite: 1]
             ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
             ctx.lineWidth = 1.5;
             for (let i = 0; i < projectedNodes.length; i++) {
@@ -405,90 +742,133 @@
                 }
             }
 
-                // 3D Nodes
-                projectedNodes.forEach(node => {
-                    ctx.fillStyle = node.isCore ? '#ff0055' : '#00ffcc';
-                    ctx.beginPath();
-                    ctx.arc(node.px, node.py, (node.isCore ? 6 : 4) * node.scale, 0, Math.PI * 2);
-                    ctx.fill();
+            // 3D Nodes[cite: 1]
+            projectedNodes.forEach(node => {
+                ctx.fillStyle = node.isCore ? '#ff0055' : '#00ffcc';
+                ctx.beginPath();
+                ctx.arc(node.px, node.py, (node.isCore ? 6 : 4) * node.scale, 0, Math.PI * 2);
+                ctx.fill();
 
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                    ctx.font = '10px Courier New';
-                    ctx.fillText(node.id, node.px + 10, node.py + 4);
-                });
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '10px Courier New';
+                ctx.fillText(node.id, node.px + 10, node.py + 4);
+            });
 
-                // Draw 3D Gimbal Gizmo
-                drawGizmo();
-            }
+            drawGizmo();
+        }
 
-        // Start animation loop
         function animationLoop() {
             draw();
             requestAnimationFrame(animationLoop);
         }
-        animationLoop();       
-            // Helper function to check if coordinates fall within the Gimbal HUD area (bottom right)
-        // Register event listeners ONCE globally
-            canvas.addEventListener('mousedown', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+        animationLoop();
 
-                if (isInGimbalArea(mouseX, mouseY)) {
-                    isDraggingGimbal = true;
-                    lastMouseX = e.clientX;
-                    lastMouseY = e.clientY;
+        // Mouse Events & Unprojection[cite: 1]
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isInGimbalArea(mouseX, mouseY)) {
+                isDraggingGimbal = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                return;
+            }
+
+            for (let node of nodes) {
+                if (node.isCore) continue;
+                const p = project3D(node.x, node.y, node.z, canvas.width, canvas.height);
+                const dx = mouseX - p.px;
+                const dy = mouseY - p.py;
+                if (Math.sqrt(dx * dx + dy * dy) < 22) {
+                    selectedNode = node;
+                    isDraggingGimbal = false;
                     return;
                 }
-
-                for (let node of nodes) {
-                    if (node.isCore) continue;
-                    const p = project3D(node.x, node.y, node.z, canvas.width, canvas.height);
-                    const dx = mouseX - p.px;
-                    const dy = mouseY - p.py;
-                    if (Math.sqrt(dx * dx + dy * dy) < 22) {
-                        selectedNode = node;
-                        isDraggingGimbal = false;
-                        return;
-                    }
-                }
-            });
+            }
+        });
 
         window.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
 
-                if (selectedNode && !selectedNode.isCore) {
-                    const screenX = mouseX - canvas.width / 2;
-                    const screenY = mouseY - canvas.height / 2;
+            if (selectedNode && !selectedNode.isCore) {
+                const screenX = mouseX - canvas.width / 2;
+                const screenY = mouseY - canvas.height / 2;
 
-                    // Unproject screen movement relative to camera yaw
-                    const cosY = Math.cos(-camera.rotY);
-                    const sinY = Math.sin(-camera.rotY);
+                const cosY = Math.cos(-camera.rotY);
+                const sinY = Math.sin(-camera.rotY);
 
-                    selectedNode.x = screenX * cosY - screenY * sinY;
-                    selectedNode.z = screenX * sinY + screenY * cosY;
-                    selectedNode.y = 0;
-                } else if (isDraggingGimbal) {
-                    const deltaX = e.clientX - lastMouseX;
-                    const deltaY = e.clientY - lastMouseY;
-                    camera.rotY += deltaX * 0.005;
-                    camera.rotX += deltaY * 0.005;
-                    lastMouseX = e.clientX;
-                    lastMouseY = e.clientY;
-                }
-            });
+                selectedNode.x = screenX * cosY - screenY * sinY;
+                selectedNode.z = screenX * sinY + screenY * cosY;
+                selectedNode.y = 0;
+            } else if (isDraggingGimbal) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                camera.rotY += deltaX * 0.005;
+                camera.rotX += deltaY * 0.005;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
 
         window.addEventListener('mouseup', () => {
-                if (selectedNode && !selectedNode.isCore) {
-                    selectedNode.isPinned = true; // Lock position on release
-                }
-                selectedNode = null;
-                isDraggingGimbal = false;
-                isGizmoDragging = false;
-            });
+            if (selectedNode && !selectedNode.isCore) {
+                selectedNode.isPinned = true;
+            }
+            selectedNode = null;
+            isDraggingGimbal = false;
+            isGizmoDragging = false;
+        });
+
+        // Control Deck Collapsible & Toggle Logic (v2.6.8)
+        document.getElementById('deck-collapse-btn').addEventListener('click', () => {
+            const body = document.getElementById('deck-body-content');
+            const btn = document.getElementById('deck-collapse-btn');
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                btn.textContent = '−';
+            } else {
+                body.style.display = 'none';
+                btn.textContent = '+';
+            }
+        });
+
+        // Interference Overlays Interactive Toggles
+        //    document.querySelectorAll('.overlay-toggle').forEach(btn => {
+        //        btn.addEventListener('click', () => {
+                    // Toggle the class and capture the resulting state directly
+        //            const isActive = btn.classList.toggle('active');
+        //            const overlayKey = btn.getAttribute('data-overlay');
+
+        //            if (overlayKey && window.hudConfig && window.hudConfig.overlays) {
+        //                window.hudConfig.overlays[overlayKey] = isActive;
+        //                console.log(`Overlay ${overlayKey} set to ${isActive}`);
+        //            }
+        //        });
+        //    });
+
+        // Sliders Real-Time Value Binding
+        const bindSlider = (id, valId, unit = '') => {
+            const slider = document.getElementById(id);
+            const valDisplay = document.getElementById(valId);
+            if (slider && valDisplay) {
+                slider.addEventListener('input', (e) => {
+                    valDisplay.textContent = e.target.value + unit;
+                });
+            }
+        };
+        bindSlider('slider-world-scale', 'val-world-scale');
+        bindSlider('slider-grid-density', 'val-grid-density');
+        bindSlider('slider-motion-speed', 'val-motion-speed', 'x');
+        bindSlider('slider-noise-thresh', 'val-noise-thresh');
     </script>
+    <!-- End of Main Script -->
+
+    <!-- Spatial Control Deck Logic & State Manager (v2.6.8) -->
+    <script src="/js/controlDeck.js"></script>
 </body>
 
 </html>

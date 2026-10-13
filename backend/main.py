@@ -3,7 +3,11 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+import os
 from fastapi.staticfiles import StaticFiles
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+JS_DIR = os.path.join(BASE_DIR, "js")
 import time
 import asyncio
 import json
@@ -15,6 +19,10 @@ import os
 from geometry import compute_curvature_metrics
 
 app = FastAPI()
+
+# Mount the backend/js directory so the browser can request /js/controlDeck.js
+app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
+
 
 app.add_middleware(
     CORSMiddleware,
