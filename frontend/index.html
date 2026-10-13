@@ -3,12 +3,6 @@
 
 <head>
     <meta charset="UTF-8">
-    <div id="hud-container">
-        <h3>HOLOGRAPHIC HUD V2.6</h3>
-        <div class="hud-integrity">System Integrity: 100%</div>
-        <div class="hud-ee">Entanglement (See): 0.0</div>
-        <div class="hud-phi">Integrated Info (Phi): 0.0</div>
-    </div>
     <title>Holographic Topology Engine HUD v2.6</title>
     <style>
         body {
@@ -31,6 +25,7 @@
             border-radius: 4px;
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
             pointer-events: none;
+            z-index: 100;
         }
 
         h3 {
@@ -40,7 +35,9 @@
             text-transform: uppercase;
         }
 
-        .hud-integrity, .hud-ee, .hud-phi {
+        .hud-integrity,
+        .hud-ee,
+        .hud-phi {
             font-size: 14px;
             margin: 5px 0;
         }
@@ -57,6 +54,45 @@
 </head>
 
 <body>
+    <!-- Primary Telemetry HUD -->
+    <div id="hud-container">
+        <h3>HOLOGRAPHIC HUD V2.6</h3>
+        <div class="hud-integrity">System Integrity: 100%</div>
+        <div class="hud-ee">Entanglement (See): 0.0</div>
+        <div class="hud-phi">Integrated Info (Phi): 0.0</div>
+    </div>
+
+    <!-- Topology Control Panel (Stacked Beneath Telemetry HUD) -->
+    <div id="topology-hud"
+        style="position: absolute; top: 145px; left: 20px; background: rgba(5, 5, 10, 0.95); border: 1px solid #00ffcc; padding: 12px; font-family: 'Courier New', monospace; color: #00ffcc; z-index: 100; font-size: 11px; width: 240px; height: auto; box-shadow: 0 0 15px rgba(0,255,204,0.15);">
+        <div style="margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #00ffcc55; padding-bottom: 4px;">
+            TOPOLOGY CONTROL
+        </div>
+        <div style="margin-bottom: 4px; font-size: 10px; color: #00ffccaa;">REFERENCE SHAPE:</div>
+        <select id="topologySelect" onchange="window.setTopologyMode(this.value)"
+            style="width: 100%; background: #05050a; color: #00ffcc; border: 1px solid #00ffcc; font-family: 'Courier New', monospace; font-size: 10px; padding: 6px; cursor: pointer;">
+            <option value="open">Open Space</option>
+            <option value="spheroid">Spheroid</option>
+            <option value="cubed">Cubed</option>
+            <option value="toroidal">Toroidal</option>
+        </select>
+    </div>
+
+    <!-- 3D Gimbal Panel (Isolated to Bottom Right) -->
+    <div id="gimbal-hud"
+        style="position: absolute; bottom: 20px; right: 20px; background: rgba(5, 5, 10, 0.95); border: 1px solid #00ffcc; padding: 12px; font-family: 'Courier New', monospace; color: #00ffcc; z-index: 100; font-size: 11px; width: 220px; box-shadow: 0 0 15px rgba(0,255,204,0.15);">
+        <div
+            style="margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #00ffcc55; padding-bottom: 4px; display: flex; justify-content: space-between;">
+            <span>3D GIMBAL</span>
+            <span onclick="window.resetCamera()" style="cursor:pointer; color:#ff0055;"
+                title="Reset View">[RESET]</span>
+        </div>
+        <div style="text-align: center; background: #020205; border: 1px solid #00ffcc33; padding: 4px;">
+            <canvas id="gizmoCanvas" width="192" height="100"
+                style="cursor: grab; display: block; margin: 0 auto;"></canvas>
+            <div style="font-size: 9px; color: #00ffcc88; margin-top: 2px;">Click & Drag to Rotate Axes</div>
+        </div>
+    </div>
 
     <canvas id="hudCanvas"></canvas>
 
@@ -70,13 +106,172 @@
         }
         window.addEventListener('resize', resize);
         resize();
-        //Sample simulation nodes
-        //1. Initialize nodes with base coordinates for independent wandering/orbiting
-        let nodes = [
-            { id: "N-001", x: canvas.width * 0.4, y: canvas.height * 0.4, z: 0.28, isCore: true, isSevered: false, health: 1 },
-            { id: "N-002", x: canvas.width * 0.6, y: canvas.height * 0.5, z: 0.50, isCore: false, isSevered: false, health: 1 },
-            { id: "N-003", x: canvas.width * 0.5, y: canvas.height * 0.7, z: 0.12, isCore: false, isSevered: false, health: 1 }
-        ];
+
+        // Global Camera State
+        let camera = {
+            rotX: 0.3,
+            rotY: 0.0,
+            rotZ: 0.0,
+            distance: 800
+        };
+        // Global Nodes Data (Restoring full 3-node baseline)
+            let nodes = [
+                { id: "N-001", x: 0, y: 0, z: 0, isCore: true },
+                { id: "N-002", x: 120, y: -40, z: 30, isCore: false },
+                { id: "N-003", x: -120, y: 60, z: -30, isCore: false }
+            ];
+
+        // 3D Projection Pipeline ( treating (0,0) as world center )
+            function project3D(x, y, z, width, height) {
+                const cx = x;
+                const cy = y;
+                const cz = z || 0.0; // Removed the * 200 scaling multiplier
+
+                const cosY = Math.cos(camera.rotY), sinY = Math.sin(camera.rotY);
+                const x1 = cx * cosY - cz * sinY;
+                const z1 = cx * sinY + cz * cosY;
+
+                const cosX = Math.cos(camera.rotX), sinX = Math.sin(camera.rotX);
+                const y1 = cy * cosX - z1 * sinX;
+                const z2 = cy * sinX + z1 * cosX;
+
+                const cosZ = Math.cos(camera.rotZ), sinZ = Math.sin(camera.rotZ);
+                const x2 = x1 * cosZ - y1 * sinZ;
+                const y2 = x1 * sinZ + y1 * cosZ;
+
+                const fov = camera.distance;
+                const scale = fov / (fov + z2 + 300);
+
+                return {
+                    px: width / 2 + x2 * scale,
+                    py: height / 2 + y2 * scale,
+                    scale: scale,
+                    depth: z2
+                };
+            }
+
+
+        // Topology Preset Generator
+        window.setTopologyMode = function (mode) {
+            const count = nodes.length > 0 ? nodes.length : 8;
+            nodes = [];
+
+            for (let i = 0; i < count; i++) {
+                let x = 0, y = 0, z = 0;
+                const id = `N-00${i + 1}`;
+                const isCore = (i === 0);
+
+                if (mode === 'spheroid') {
+                    const phi = Math.acos(-1 + (2 * i) / count);
+                    const theta = Math.sqrt(count * Math.PI) * phi;
+                    const r = 120;
+                    x = r * Math.cos(theta) * Math.sin(phi);
+                    y = r * Math.sin(theta) * Math.sin(phi);
+                    z = r * Math.cos(phi);
+                } else if (mode === 'cubed') {
+                    const spacing = 100;
+                    x = (i % 2 === 0 ? -1 : 1) * spacing;
+                    y = (Math.floor(i / 2) % 2 === 0 ? -1 : 1) * spacing;
+                    z = (Math.floor(i / 4) === 0 ? -1 : 1) * spacing;
+                } else if (mode === 'toroidal') {
+                    const R = 120, r = 40;
+                    const u = (i / count) * Math.PI * 2;
+                    const v = (i * 3) * Math.PI * 2 / count;
+                    x = (R + r * Math.cos(v)) * Math.cos(u);
+                    y = (R + r * Math.cos(v)) * Math.sin(u);
+                    z = r * Math.sin(v);
+                } else {
+                    x = (Math.random() - 0.5) * 300;
+                    y = (Math.random() - 0.5) * 300;
+                    z = (Math.random() - 0.5) * 150;
+                }
+
+                nodes.push({ id, x, y, z, isCore });
+            }
+        };
+
+        // Reset Camera Handler
+        window.resetCamera = function () {
+            camera.rotX = 0.3;
+            camera.rotY = 0.0;
+            camera.rotZ = 0.0;
+        };
+
+        // Interactive Gizmo Handle Logic
+        const gizmoCanvas = document.getElementById('gizmoCanvas');
+        gizmoCanvas.width = 192;
+        gizmoCanvas.height = 100;
+        const gCtx = gizmoCanvas.getContext('2d');
+        let isGizmoDragging = false;
+        let gizmoLastX = 0;
+        let gizmoLastY = 0;
+
+        gizmoCanvas.addEventListener('mousedown', (e) => {
+            isGizmoDragging = true;
+            gizmoLastX = e.clientX;
+            gizmoLastY = e.clientY;
+            gizmoCanvas.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isGizmoDragging) return;
+            const deltaX = e.clientX - gizmoLastX;
+            const deltaY = e.clientY - gizmoLastY;
+
+            camera.rotY += deltaX * 0.02;
+            camera.rotX += deltaY * 0.02;
+            camera.rotX = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotX));
+
+            gizmoLastX = e.clientX;
+            gizmoLastY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => {
+                if (selectedNode && !selectedNode.isCore) {
+                    selectedNode.isPinned = true;
+                }
+                selectedNode = null;
+            });
+
+        // Render Gizmo Triad
+        function drawGizmo() {
+            gCtx.fillStyle = '#020205';
+            gCtx.fillRect(0, 0, gizmoCanvas.width, gizmoCanvas.height);
+
+            const cx = gizmoCanvas.width / 2;
+            const cy = gizmoCanvas.height / 2;
+            const len = 35;
+
+            const axes = [
+                { label: 'X', x: len, y: 0, z: 0, color: '#ff0055' },
+                { label: 'Y', x: 0, y: len, z: 0, color: '#00ffcc' },
+                { label: 'Z', x: 0, y: 0, z: len, color: '#0066ff' }
+            ];
+
+            axes.forEach(axis => {
+                const cosY = Math.cos(camera.rotY), sinY = Math.sin(camera.rotY);
+                const cosX = Math.cos(camera.rotX), sinX = Math.sin(camera.rotX);
+                const cosZ = Math.cos(camera.rotZ), sinZ = Math.sin(camera.rotZ);
+
+                let x1 = axis.x * cosY - axis.z * sinY;
+                let z1 = axis.x * sinY + axis.z * cosY;
+                let y1 = axis.y * cosX - z1 * sinX;
+                let x2 = x1 * cosZ - y1 * sinZ;
+                let y2 = x1 * sinZ + y1 * cosZ;
+
+                gCtx.strokeStyle = axis.color;
+                gCtx.lineWidth = 2;
+                gCtx.beginPath();
+                gCtx.moveTo(cx, cy);
+                gCtx.lineTo(cx + x2, cy + y2);
+                gCtx.stroke();
+
+                gCtx.fillStyle = '#ffffff';
+                gCtx.font = '9px Courier New';
+                gCtx.fillText(axis.label, cx + x2 + 3, cy + y2 + 3);
+            });
+        }
+
         function updateHUD(packet) {
             const integrityEl = document.querySelector('.hud-integrity');
             const eeEl = document.querySelector('.hud-ee');
@@ -86,12 +281,8 @@
             if (eeEl) eeEl.textContent = `Entanglement (See): ${packet.s_ee}`;
             if (phiEl) phiEl.textContent = `Integrated Info (Phi): ${packet.phi}`;
         }
-        //let simulationParams = {
-        //    resolution: 64,
-        //    coupling_constant: 0.1
-        //};
 
-        // Establish WebSocket connection early so it's scoped for event listeners
+        // WebSocket Connection
         const wsUrl = "ws://127.0.0.1:8000/ws/telemetry";
         const ws = new WebSocket(wsUrl);
         ws.binaryType = "arraybuffer";
@@ -105,116 +296,198 @@
         };
 
         ws.onmessage = function (event) {
-            if (event.data instanceof ArrayBuffer) {
-                const floatArray = new Float32Array(event.data);
-                for (let i = 0; i < nodes.length && (i * 4 + 1) < floatArray.length; i++) {
-                    nodes[i].x = floatArray[i * 4];
-                    nodes[i].y = floatArray[i * 4 + 1];
-                    nodes[i].z = floatArray[i * 4 + 2];
+                if (event.data instanceof ArrayBuffer) {
+                    const floatArray = new Float32Array(event.data);
+                    for (let i = 0; i < nodes.length && (i * 4 + 1) < floatArray.length; i++) {
+                        if (!nodes[i].isPinned && nodes[i] !== selectedNode) {
+                            nodes[i].x = floatArray[i * 4];
+                            nodes[i].y = floatArray[i * 4 + 1];
+                            nodes[i].z = floatArray[i * 4 + 2];
+                        }
+                    }
+                } else {
+                    const packet = JSON.parse(event.data);
+                    if (packet.type === "hud_update") {
+                        updateHUD(packet);
+                    }
                 }
-            } else {
-                const packet = JSON.parse(event.data);
-                if (packet.type === "hud_update") {
-                    updateHUD(packet);
-                }
-            }
-        };
-        
+            };
+
         ws.onclose = () => {
             console.warn("Holographic HUD WebSocket Disconnected. Reconnecting...");
             setTimeout(() => location.reload(), 3000);
         };
-        
-    // Render loop
+        // Global Interaction State (Declared ONCE at top-level)
+            let selectedNode = null;
+            let isDraggingGimbal = false;
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+
+            function isInGimbalArea(x, y) {
+                    // Assuming the gimbal box sits roughly in the bottom-right corner:
+                    // e.g., canvas.width - 220 to canvas.width - 20, and canvas.height - 220 to canvas.height - 40
+                    return (
+                        x >= canvas.width - 220 &&
+                        x <= canvas.width - 20 &&
+                        y >= canvas.height - 220 &&
+                        y <= canvas.height - 40
+                    );
+                }
+
+        // 3D Motion & Drift Calibration Loop
+            function updateNodesMotion() {
+                    const time = performance.now() * 0.0003;
+                    nodes.forEach((node, index) => {
+                        // Skip core, currently dragged node, and any node pinned by the user
+                        if (!node.isCore && node !== selectedNode && !node.isPinned) {
+                            const baseAngle = time * (index === 1 ? 1 : -1) + (index * Math.PI);
+                            const radius = 120;
+                            node.x = Math.cos(baseAngle) * radius;
+                            node.z = Math.sin(baseAngle) * radius;
+                            node.y = 0;
+                        }
+                    });
+                }
+
+        // Main Render Loop
         function draw() {
-            ctx.fillStyle = '#05050a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#05050a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Grid background
-            ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)';
+                // Execute motion and drift logic
+                updateNodesMotion();
+
+                // Project nodes using 3D camera matrix
+                let projectedNodes = nodes.map(node => {
+                    const p = project3D(node.x, node.y, node.z, canvas.width, canvas.height);
+                    return { ...node, px: p.px, py: p.py, scale: p.scale, depth: p.depth };
+                });
+
+                // World-Space Grid Floor (XZ plane positioned below nodes)
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.15)';
             ctx.lineWidth = 1;
-            const gridSize = 50;
-            for (let x = 0; x < canvas.width; x += gridSize) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += gridSize) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
+            const gridSteps = 10;
+            const span = 250;
+            const floorY = 80; // Positioned below the nodes (y = 0)
 
-            // Connections
+            for (let i = -gridSteps; i <= gridSteps; i++) {
+                const coord = (i / gridSteps) * span;
+
+                // Lines parallel to Z axis
+                const p1 = project3D(coord, floorY, -span, canvas.width, canvas.height);
+                const p2 = project3D(coord, floorY, span, canvas.width, canvas.height);
+                if (p1.scale > 0 && p2.scale > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.px, p1.py);
+                    ctx.lineTo(p2.px, p2.py);
+                    ctx.stroke();
+                }
+
+                // Lines parallel to X axis
+                const p3 = project3D(-span, floorY, coord, canvas.width, canvas.height);
+                const p4 = project3D(span, floorY, coord, canvas.width, canvas.height);
+                if (p3.scale > 0 && p4.scale > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(p3.px, p3.py);
+                    ctx.lineTo(p4.px, p4.py);
+                    ctx.stroke();
+                }
+            }
+            // 3D Connections
             ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
             ctx.lineWidth = 1.5;
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
+            for (let i = 0; i < projectedNodes.length; i++) {
+                for (let j = i + 1; j < projectedNodes.length; j++) {
                     ctx.beginPath();
-                    ctx.moveTo(nodes[i].x, nodes[i].y);
-                    ctx.lineTo(nodes[j].x, nodes[j].y);
+                    ctx.moveTo(projectedNodes[i].px, projectedNodes[i].py);
+                    ctx.lineTo(projectedNodes[j].px, projectedNodes[j].py);
                     ctx.stroke();
                 }
             }
 
-        // Nodes
-        nodes.forEach(node => {
-            ctx.fillStyle = node.isCore ? '#ff0055' : '#00ffcc';
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, node.isCore ? 6 : 4, 0, Math.PI * 2);
-            ctx.fill();
+                // 3D Nodes
+                projectedNodes.forEach(node => {
+                    ctx.fillStyle = node.isCore ? '#ff0055' : '#00ffcc';
+                    ctx.beginPath();
+                    ctx.arc(node.px, node.py, (node.isCore ? 6 : 4) * node.scale, 0, Math.PI * 2);
+                    ctx.fill();
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.font = '10px Courier New';
-            ctx.fillText(node.id, node.x + 10, node.y + 4);
-        });
-    }
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.font = '10px Courier New';
+                    ctx.fillText(node.id, node.px + 10, node.py + 4);
+                });
 
-    // Start animation loop
-    function animationLoop() {
-        draw();
-        requestAnimationFrame(animationLoop);
-    }
-    animationLoop();
-
-    // Mouse Drag Interaction
-        let selectedNode = null;
-
-        canvas.addEventListener('mousedown', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            for (let node of nodes) {
-                const dx = node.x - mouseX;
-                const dy = node.y - mouseY;
-                if (Math.sqrt(dx * dx + dy * dy) < 20) {
-                    selectedNode = node;
-                    break;
-                }
+                // Draw 3D Gimbal Gizmo
+                drawGizmo();
             }
-        });
 
-        let lastSendTime = 0;
-
-        canvas.addEventListener('mousemove', (e) => {
-                if (!selectedNode) return;
+        // Start animation loop
+        function animationLoop() {
+            draw();
+            requestAnimationFrame(animationLoop);
+        }
+        animationLoop();       
+            // Helper function to check if coordinates fall within the Gimbal HUD area (bottom right)
+        // Register event listeners ONCE globally
+            canvas.addEventListener('mousedown', (e) => {
                 const rect = canvas.getBoundingClientRect();
-                selectedNode.x = e.clientX - rect.left;
-                selectedNode.y = e.clientY - rect.top;
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
 
-                const now = performance.now();
-                if (now - lastSendTime > 16) {
-                    lastSendTime = now;
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({
-                            action: "update_nodes",
-                            nodes: nodes.map(n => ({ id: n.id, x: n.x, y: n.y, z: n.z || 0.0 }))
-                        }));
+                if (isInGimbalArea(mouseX, mouseY)) {
+                    isDraggingGimbal = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    return;
+                }
+
+                for (let node of nodes) {
+                    if (node.isCore) continue;
+                    const p = project3D(node.x, node.y, node.z, canvas.width, canvas.height);
+                    const dx = mouseX - p.px;
+                    const dy = mouseY - p.py;
+                    if (Math.sqrt(dx * dx + dy * dy) < 22) {
+                        selectedNode = node;
+                        isDraggingGimbal = false;
+                        return;
                     }
                 }
             });
 
-            canvas.addEventListener('mouseup', () => {
-                    selectedNode = null;
-                });
+        window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
 
+                if (selectedNode && !selectedNode.isCore) {
+                    const screenX = mouseX - canvas.width / 2;
+                    const screenY = mouseY - canvas.height / 2;
+
+                    // Unproject screen movement relative to camera yaw
+                    const cosY = Math.cos(-camera.rotY);
+                    const sinY = Math.sin(-camera.rotY);
+
+                    selectedNode.x = screenX * cosY - screenY * sinY;
+                    selectedNode.z = screenX * sinY + screenY * cosY;
+                    selectedNode.y = 0;
+                } else if (isDraggingGimbal) {
+                    const deltaX = e.clientX - lastMouseX;
+                    const deltaY = e.clientY - lastMouseY;
+                    camera.rotY += deltaX * 0.005;
+                    camera.rotX += deltaY * 0.005;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                }
+            });
+
+        window.addEventListener('mouseup', () => {
+                if (selectedNode && !selectedNode.isCore) {
+                    selectedNode.isPinned = true; // Lock position on release
+                }
+                selectedNode = null;
+                isDraggingGimbal = false;
+                isGizmoDragging = false;
+            });
     </script>
 </body>
 
