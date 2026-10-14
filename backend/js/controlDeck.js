@@ -162,8 +162,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     dot += `  "${window.nodes[i].id}" -- "${window.nodes[j].id}";\n`;
                 }
             }
-        }
+        }    
+
         dot += "}\n";
         downloadFile(dot, "topology_graph.dot", "text/vnd.graphviz");
+        // Bind the snapshot bundle to your export action button
+        const snapshotBtn = document.getElementById('snapshotBtn') || document.querySelector('button[data-action="snapshot"], .snapshot-trigger');
+
+        if (snapshotBtn) {
+            snapshotBtn.addEventListener('click', () => {
+                captureSpatialSnapshot();
+                console.log("v2.6.9 Multi-format snapshot bundle generated and downloaded.");
+            });
+        }
+
     });
+    
 });

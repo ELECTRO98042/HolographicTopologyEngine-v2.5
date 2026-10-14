@@ -227,7 +227,7 @@
 
 <body>
     <!-- Primary Telemetry HUD -->
-    <div id="hud-container">
+    <div id="hud-container" style="width: 270px;">
         <h3>HOLOGRAPHIC HUD V2.6.8</h3>
         <div class="hud-integrity">System Integrity: 100%</div>
         <div class="hud-ee">Entanglement (See): 0.0</div>
@@ -352,7 +352,25 @@
 
             <!-- 5. Reserved Expansion Buffer -->
             <div class="deck-dock-buffer">
-                <span class="buffer-text">[ Expansion Dock: v2.6.9 / v2.7.0 ]</span>
+                <div class="expansion-deck">
+                    <!--<div class="expansion-label">[ Expansion Dock: v2.6.9 / v2.7.0 ]</div>-->
+                    <!-- The parent container now spreads them horizontally across the full width -->
+                    <div class="expansion-controls"
+                        style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; padding: 4px 8px;">
+                    
+                        <!-- Left Aligned: Telemetry Button (Muted/Disabled Terminal Style) -->
+                        <button class="control-btn" id="telemetryStreamBtn" disabled
+                            style="width: 48%; height: 32px; background: #222; color: #555; border: 1px solid #333; font-family: inherit; font-size: inherit; cursor: not-allowed;">TELEMETRY
+                            STREAM</button>
+                    
+                        <!-- Right Aligned: Snapshot Button (Dark Red Background, White Text) -->
+                        <button class="control-btn accent-btn" id="snapshotBtn"
+                            style="width: 48%; height: 32px; background: #8b0000; color: #ffffff; border: 1px solid #ff4d4d; font-family: inherit; font-size: inherit; font-weight: bold; cursor: pointer; box-shadow: 0 0 8px rgba(139,0,0,0.4);">SNAPSHOT
+                            BUNDLE</button>
+                    
+                    </div>
+                </div>
+            <!--    <span class="buffer-text">[ Expansion Dock: v2.6.9 / v2.7.0 ]</span>-->
             </div>
         </div>
     </div>
@@ -374,6 +392,7 @@
     </div>
 
     <canvas id="hudCanvas"></canvas>
+    <script src="/js/snapshotEngine.js"></script>
     <!-- Main HUD Animation & WebSocket Script -->
     <script>
         const canvas = document.getElementById('hudCanvas');
@@ -393,6 +412,16 @@
             rotZ: 0.0,
             distance: 800
         };
+        // Inside your main setup or init routine
+        function initControlDeck() {
+            // ... existing event listeners for overlays and sliders ...
+
+            // v2.6.9 Snapshot Bundle Binding
+            const snapshotBtn = document.getElementById('snapshotBtn');
+            if (snapshotBtn) {
+                snapshotBtn.addEventListener('click', captureSpatialSnapshot);
+            }
+        }
 
         // Global Nodes Data[cite: 1]
         let nodes = [
@@ -823,18 +852,6 @@
             isGizmoDragging = false;
         });
 
-        // Control Deck Collapsible & Toggle Logic (v2.6.8)
-        document.getElementById('deck-collapse-btn').addEventListener('click', () => {
-            const body = document.getElementById('deck-body-content');
-            const btn = document.getElementById('deck-collapse-btn');
-            if (body.style.display === 'none') {
-                body.style.display = 'block';
-                btn.textContent = '−';
-            } else {
-                body.style.display = 'none';
-                btn.textContent = '+';
-            }
-        });
 
         // Interference Overlays Interactive Toggles
         //    document.querySelectorAll('.overlay-toggle').forEach(btn => {
@@ -864,11 +881,27 @@
         bindSlider('slider-grid-density', 'val-grid-density');
         bindSlider('slider-motion-speed', 'val-motion-speed', 'x');
         bindSlider('slider-noise-thresh', 'val-noise-thresh');
+
+        resize();
+        initControlDeck()
     </script>
     <!-- End of Main Script -->
+    <script>
+    const collapseBtn = document.getElementById('deck-collapse-btn');
+    if (collapseBtn && !collapseBtn.dataset.listenerBound) {
+        collapseBtn.addEventListener('click', (e) => {
+            const body = document.getElementById('deck-body-content');
+            const btn = e.currentTarget;
+            const isCollapsed = body.classList.toggle('hidden');
+            btn.textContent = isCollapsed ? '+' : '−';
+        });
+        collapseBtn.dataset.listenerBound = "true";
+    }
+    </script> 
+<!-- Spatial Control Deck Logic & State Manager (v2.6.8) -->
+<script src="/js/controlDeck.js"></script>
 
-    <!-- Spatial Control Deck Logic & State Manager (v2.6.8) -->
-    <script src="/js/controlDeck.js"></script>
+
 </body>
 
 </html>
