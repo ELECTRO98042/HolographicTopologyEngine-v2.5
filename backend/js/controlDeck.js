@@ -87,8 +87,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     bindSlider('slider-world-scale', 'val-world-scale', 'worldScale');
-    bindSlider('slider-grid-density', 'val-grid-density', 'gridDensity');
-    bindSlider('slider-motion-speed', 'val-motion-speed', 'motionSpeed', 'x');
+    bindSlider('slider-grid-density', 'val-grid-density', 'gridDensity', '', (val) => {
+        if (window.activeViewer && typeof window.activeViewer.updateGridSize === 'function') {
+            window.activeViewer.updateGridSize(val);
+        }
+    });
+    bindSlider('slider-motion-speed', 'val-motion-speed', 'motionSpeed', 'x', (val) => {
+        if (window.activeViewer && typeof window.activeViewer.setSpeed === 'function') {
+            window.activeViewer.setSpeed(val);
+        }
+    });
     bindSlider('slider-noise-thresh', 'val-noise-thresh', 'noiseThreshold');
 
     // Interference Overlays Toggle Bindings

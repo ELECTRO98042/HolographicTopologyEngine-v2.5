@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Holographic Topology Engine HUD v2.6.8</title>
+    <title>Holographic Topology Engine HUD v2.6.9</title>
     <style>
         body {
             margin: 0;
@@ -359,9 +359,9 @@
                         style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; padding: 4px 8px;">
                     
                         <!-- Left Aligned: Telemetry Button (Muted/Disabled Terminal Style) -->
-                        <button class="control-btn" id="telemetryStreamBtn" disabled
-                            style="width: 48%; height: 32px; background: #222; color: #555; border: 1px solid #333; font-family: inherit; font-size: inherit; cursor: not-allowed;">TELEMETRY
-                            STREAM</button>
+                        <button class="control-btn" id="telemetryStreamBtn"
+                            style="width: 48%; height: 32px; background: #222; color: #00ffcc; border: 1.5px solid #00ffcc; font-family: inherit; font-size: inherit; cursor: pointer;"
+                            onclick="openTelemetryStream()">TELEMETRY STREAM</button>
                     
                         <!-- Right Aligned: Snapshot Button (Dark Red Background, White Text) -->
                         <button class="control-btn accent-btn" id="snapshotBtn"
@@ -414,12 +414,14 @@
         };
         // Inside your main setup or init routine
         function initControlDeck() {
-            // ... existing event listeners for overlays and sliders ...
-
-            // v2.6.9 Snapshot Bundle Binding
-            const snapshotBtn = document.getElementById('snapshotBtn');
-            if (snapshotBtn) {
-                snapshotBtn.addEventListener('click', captureSpatialSnapshot);
+            //////////////////////////////////////////////////////////////
+            // ... existing event listeners for overlays and sliders ...//
+            //////////////////////////////////////////////////////////////
+            // v2.7.0 Telemetry Stream Window Binding
+            const telemetryStreamBtn = document.getElementById('telemetryStreamBtn');
+            if (telemetryStreamBtn) {
+                telemetryStreamBtn.removeAttribute('disabled');
+                telemetryStreamBtn.addEventListener('click', window.openTelemetryStream);
             }
         }
 
@@ -900,8 +902,10 @@
     </script> 
 <!-- Spatial Control Deck Logic & State Manager (v2.6.8) -->
 <script src="/js/controlDeck.js"></script>
-
-
+<!-- Snapshot bundle package with telemetry if pop-out window is present (v2.7.0) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Telemetry call to telemetryStream.js call (v2.7.0) -->
+<script src="/js/telemetryStream.js"></script>
 </body>
 
 </html>

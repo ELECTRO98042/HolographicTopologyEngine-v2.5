@@ -1,27 +1,28 @@
-# backend/main.py
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
 import os
-from fastapi.staticfiles import StaticFiles
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-JS_DIR = os.path.join(BASE_DIR, "js")
 import time
 import asyncio
 import json
 import jax
 import jax.dlpack
 import jax.numpy as jnp
-import os
-
+# backend/main.py
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 from geometry import compute_curvature_metrics
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+JS_DIR = os.path.join(BASE_DIR, "js")
+PHYSICS_DIR = os.path.join(BASE_DIR, "physics")
 
 app = FastAPI()
 
 # Mount the backend/js directory so the browser can request /js/controlDeck.js
 app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
+# Mount the backend/physics directory so the browser can request /physics/WaveEquationSolver.js
+app.mount("/physics", StaticFiles(directory=PHYSICS_DIR), name="physics")
 
 
 app.add_middleware(
