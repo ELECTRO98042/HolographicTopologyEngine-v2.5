@@ -20,6 +20,43 @@ class TelemetryStreamApp {
         this.bindEvents();
         this.startRenderLoop();
     }
+    
+    initWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/telemetry`);
+
+        this.ws.onmessage = async (event) => {
+            if (typeof event.data === 'string') {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'hud_update') {
+                        // Forward s_ee or entropy into mesh viewer update if available
+                        if (this.meshViewer && typeof this.meshViewer.update === 'function') {
+                            this.meshViewer.update({ entropy: data.s_ee });
+                        }
+
+                        // Update UI metric displays if present on the dashboard
+                        const entDisplay = document.querySelector('#entanglement-metric');
+                        if (entDisplay) entDisplay.textContent = data.s_ee;
+
+                        const phiDisplay = document.querySelector('#phi-metric');
+                        if (phiDisplay) phiDisplay.textContent = data.phi;
+                    }
+                } catch (e) {
+                    console.error("JSON parse error on telemetry stream:", e);
+                }
+            } else if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
+                // Handle incoming binary tensor frames for 3D node positions if needed
+                const buffer = event.data instanceof Blob ? await event.data.arrayBuffer() : event.data;
+                const floatArray = new Float32Array(buffer);
+                // floatArray contains updated coordinates [x, y, z, w, ...] per node
+            }
+        };
+
+        this.ws.onclose = () => {
+            setTimeout(() => this.initWebSocket(), 2000); // Auto-reconnect
+        };
+    }
 
     initCanvas(container) {
         const canvas = container.querySelector('#canvas-CH-01');
