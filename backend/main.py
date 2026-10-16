@@ -5,13 +5,18 @@ import json
 import jax
 import jax.dlpack
 import jax.numpy as jnp
+import random
+import numpy as np
 # backend/main.py
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from geometry import compute_curvature_metrics
+from compute_engine import serialize_coords_to_binary # include it with your existing compute_engine imports
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JS_DIR = os.path.join(BASE_DIR, "js")
@@ -23,7 +28,6 @@ app = FastAPI()
 app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
 # Mount the backend/physics directory so the browser can request /physics/WaveEquationSolver.js
 app.mount("/physics", StaticFiles(directory=PHYSICS_DIR), name="physics")
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,6 +85,10 @@ class ConnectionManager:
 
     async def send_binary(self, data: bytes, websocket: WebSocket):
         await websocket.send_bytes(data)
+
+    async def broadcast_binary(self, data: bytes):
+        for connection in self.active_connections:
+            await connection.send_bytes(data)
 manager = ConnectionManager()
 
 # Global state tracking for active simulation nodes per session/server instance
@@ -152,6 +160,8 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
     phase = 0.0
 
     try:
+        # Initialize coordinate state (e.g., 32x32 grid or tensor points)
+        current_coords = jnp.zeros((1024, 3,), dtype=jnp.float32) # or your initial node tensor
         while True:
             start_time = time.time()
             # Increment phase smoothly each tick (e.g., 60Hz delta)
@@ -215,8 +225,18 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
             await manager.send_text_json(hud_metadata, websocket)
 
             # Send single authoritative binary tensor frame
-            binary_payload = updated_coords.astype(jnp.float32).tobytes()
-            await manager.send_binary(binary_payload, websocket)
+            # binary_payload = serialize_coords_to_binary(updated_coords)
+            # Generate 32x32 wave height field using the phase accumulator
+            grid_size = 32
+            x = jnp.linspace(-10, 10, grid_size)
+            y = jnp.linspace(-10, 10, grid_size)
+            xx, yy = jnp.meshgrid(x, y)
+            zz = jnp.sin(jnp.sqrt(xx**2 + yy**2) - phase) * 2.0
+            
+            # Flatten to exactly 1024 floats (4096 bytes)
+            wave_payload = zz.reshape(-1).astype(np.float32).tobytes()
+            await manager.send_binary(wave_payload, websocket)
+
             # Maintain a strict 60Hz cadence
             elapsed = time.time() - start_time
             sleep_duration = max(0.0, (1.0 / 60.0) - elapsed)

@@ -42,6 +42,20 @@ def compute_topology_metrics(nodes):
         "s_ee": round(s_ee, 2),
         "phi": round(phi, 2)
     }
+def serialize_coords_to_binary(coords_tensor) -> bytes:
+    """
+    Ensures tensor is contiguous float32 and returns raw bytes 
+    for zero-copy WebSocket transmission.
+    """
+    # Handles JAX/NumPy conversion safely and packs the buffer
+    if hasattr(coords_tensor, "__jax_array__") or "jax" in str(type(coords_tensor)):
+        import numpy as np
+        arr = np.array(coords_tensor, dtype=np.float32)
+    else:
+        arr = coords_tensor.astype(np.float32)
+        
+    return np.ascontiguousarray(arr).tobytes()
+
 def optimized_step_telemetry(node_positions):
     # Example vectorised distance & curvature metrics computation
     diff = node_positions[:, None, :] - node_positions[None, :, :]

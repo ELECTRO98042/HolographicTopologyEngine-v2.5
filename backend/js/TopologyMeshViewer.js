@@ -4,35 +4,34 @@ import { WaveEquationSolver } from '/physics/dynamics/WaveEquationSolver.js';
 export class TopologyMeshViewer {
     constructor(canvas) {
         this.canvas = canvas;
-        this.gridSize = 32; // 32x32 vertex plane grid
+        this.gridSize = 32; // 32x32 vertex grid
 
-        // Initialize our physical wave solver
+        // 1. Initialize Fallback Physical Wave Solver
         this.solver = new WaveEquationSolver(this.gridSize, 0.995, 0.6);
+        this.isServerDriven = false; // Tracks whether backend stream is active
 
-        // 1. Scene Setup
+        // 2. Scene Setup
         this.scene = new THREE.Scene();
 
-        // 2. Camera Setup
-        this.camera = new THREE.PerspectiveCamera(
-            45,
-            canvas.clientWidth / canvas.clientHeight,
-            0.1,
-            1000
-        );
+        // 3. Camera Setup
+        const width = this.canvas.clientWidth || window.innerWidth;
+        const height = this.canvas.clientHeight || window.innerHeight;
+        this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
         this.camera.position.set(0, -16, 18);
         this.camera.lookAt(0, 0, 0);
 
-        // 3. Renderer Setup
+        // 4. Renderer Setup
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: true,
             alpha: true
         });
-        this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+        this.renderer.setSize(width, height, false);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        // 4. Geometry & Wireframe Mesh Setup
+        // 5. Geometry & Wireframe Mesh Setup
         this.geometry = new THREE.PlaneGeometry(20, 20, this.gridSize - 1, this.gridSize - 1);
+
         this.material = new THREE.MeshBasicMaterial({
             color: 0x38bdf8,
             wireframe: true,
@@ -43,45 +42,41 @@ export class TopologyMeshViewer {
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.scene.add(this.mesh);
 
-        // 5. Internal Animation State
-        this.time = 0;
-        this.currentEntropy = 0.5;
-
-        // Start render loop
-        this.animate = this.animate.bind(this);
-        requestAnimationFrame(this.animate);
+        // Start Render Loop
+        this.animate();
     }
 
-    // Called whenever new stream data arrives
-    update(data) {
-        if (data && typeof data.entropy === 'number') {
-            this.currentEntropy = data.entropy;
+    // High-performance binary ingestion from WebSocket
+    updateCoordinates(float32Coords) {
+        console.log("Binary payload received! Length:", float32Coords.length, "Sample Z:", float32Coords[0]);
+        if (!this.geometry) return;
+        this.isServerDriven = true; // Mark active stream
 
-            // Map live telemetry entropy into an energy disturbance at the center of the grid
-            const center = Math.floor(this.gridSize / 2);
-            const impulse = (this.currentEntropy - 0.5) * 1.5;
-            this.solver.disturb(center, center, impulse);
+        const positionAttribute = this.geometry.attributes.position;
+
+        // Fast buffer copy if dimensions match exactly
+        const count = this.gridSize * this.gridSize;
+        if (float32Coords.length === positionAttribute.array.length) {
+            positionAttribute.array.set(float32Coords);
+            positionAttribute.needsUpdate = true;
+        } else if (float32Coords.length === positionAttribute.count) {
+            // Fallback if receiving scalar/Z-displacement arrays
+            for (let i = 0; i < float32Coords.length; i++) {
+                positionAttribute.setZ(i, float32Coords[i] * 2.5);
+            }
+            positionAttribute.needsUpdate = true; // <-- Add this line
+        } else {
+            console.warn(`[CH-02] Payload length mismatch! Received: ${float32Coords.length}, Expected: ${count} or ${count * 3}`);
+            return;
         }
     }
 
-    // Handle viewport resizing
-    resize() {
-        const width = this.canvas.clientWidth;
-        const height = this.canvas.clientHeight;
-
-        if (width === 0 || height === 0) return;
-
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height, false);
-    }
-
-    // WebGL Render Cycle with FDTD Wave Solver Integration
     animate() {
-        requestAnimationFrame(() => this.animate());
+        requestAnimationFrame(this.animate.bind(this));
 
-        if (this.solver) {
-            if (typeof this.solver.step === 'function') {
+        // If backend stream isn't connected yet, fall back to local solver simulation
+        if (!this.isServerDriven) {
+            if (this.solver && typeof this.solver.step === 'function') {
                 this.solver.step();
             }
 
@@ -103,8 +98,18 @@ export class TopologyMeshViewer {
             }
         }
 
+        // Render scene
         if (this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
         }
+    }
+
+    resize() {
+        if (!this.canvas || !this.renderer || !this.camera) return;
+        const width = this.canvas.clientWidth;
+        const height = this.canvas.clientHeight;
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height, false);
     }
 }

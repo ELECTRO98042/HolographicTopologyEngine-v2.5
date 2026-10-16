@@ -1,0 +1,21 @@
+HTML
+
+<script type="module">
+    import { TopologyMeshViewer } from './js/TopologyMeshViewer.js';
+
+    let meshViewer = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('canvas-CH-02');
+        if (canvas) {
+            meshViewer = new TopologyMeshViewer(canvas);
+            window.meshViewer = meshViewer;
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (meshViewer) {
+            meshViewer.resize();
+        }
+    });
+</script>

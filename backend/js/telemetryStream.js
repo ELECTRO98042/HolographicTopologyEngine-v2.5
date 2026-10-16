@@ -11,6 +11,7 @@ class TelemetryStreamApp {
         this.meshViewer = null;
         this.adsViewer = null;
         this.phiCalculator = null;
+        this.pendingFrames = [];
     }
 
     init(containerEl) {
@@ -18,15 +19,22 @@ class TelemetryStreamApp {
         this.renderLayout();
         this.initCanvas(containerEl);
         this.bindEvents();
+        this.initWebSocket();
         this.startRenderLoop();
     }
     
     initWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/telemetry`);
+        const host = window.location.host || (window.opener ? window.opener.location.host : 'localhost:8000');
+        this.ws = new WebSocket(`${protocol}//${host}/ws/telemetry`);
+
+        // CRITICAL: Enable binary frame ingestion as ArrayBuffers
+        this.ws.binaryType = 'arraybuffer';
 
         this.ws.onmessage = async (event) => {
+            console.log("WS Event received, type:", typeof event.data, event.data); // <--- Add this diagnostic line
             if (typeof event.data === 'string') {
+                // Existing Channel 1: JSON metadata & HUD updates
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'hud_update') {
@@ -43,18 +51,28 @@ class TelemetryStreamApp {
                         if (phiDisplay) phiDisplay.textContent = data.phi;
                     }
                 } catch (e) {
-                    console.error("JSON parse error on telemetry stream:", e);
+                    console.error("Failed to parse HUD JSON:", e);
                 }
-            } else if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
-                // Handle incoming binary tensor frames for 3D node positions if needed
-                const buffer = event.data instanceof Blob ? await event.data.arrayBuffer() : event.data;
-                const floatArray = new Float32Array(buffer);
-                // floatArray contains updated coordinates [x, y, z, w, ...] per node
+            } else if (event.data instanceof ArrayBuffer) {
+                debugger;// <--- This will force the browser to open DevTools and pause here!
+                console.log("Binary ArrayBuffer received, byteLength:", event.data.byteLength); // <--- Add this
+                // Channel 2: High-frequency raw binary tensor frame (Zero-allocation mapping)
+                const float32Coords = new Float32Array(event.data);
+
+                // Route the zero-copy Float32Array straight to your mesh viewer or renderer
+                if (this.meshViewer && typeof this.meshViewer.updateCoordinates === 'function') {
+                    this.meshViewer.updateCoordinates(float32Coords);
+                } else {
+                    console.log("meshViewer or updateCoordinates not ready yet."); // <--- Add this
+                }
+            } else {
+                console.log("Received unknown data type:", event.data); // <--- Add this
             }
         };
 
         this.ws.onclose = () => {
-            setTimeout(() => this.initWebSocket(), 2000); // Auto-reconnect
+            console.log("Telemetry WebSocket disconnected. Reconnecting...");
+            setTimeout(() => this.initWebSocket(), 1000);
         };
     }
 
@@ -203,9 +221,9 @@ class TelemetryStreamApp {
             const activeCanvas = activeView.querySelector('canvas');
             if (activeCanvas) {
                 this.canvas = activeCanvas;
+                // Only setup 2D context if it's not a WebGL/Three.js channel
                 if (channelId !== 'CH-02') {
                     this.ctx = activeCanvas.getContext('2d');
-                    // Ensure proper dimensions on switch
                     const dpr = window.devicePixelRatio || 1;
                     const rect = activeCanvas.getBoundingClientRect();
                     if (rect.width > 0 && rect.height > 0) {
@@ -223,12 +241,9 @@ class TelemetryStreamApp {
             const canvasCH2 = this.container.querySelector('#canvas-CH-02');
             const { TopologyMeshViewer } = await import('/js/TopologyMeshViewer.js');
             this.meshViewer = new TopologyMeshViewer(canvasCH2);
-        } else if (channelId === 'CH-03' && !this.adsViewer) {
-            const { AdSBoundaryMapper } = await import('/physics/holographic/AdSBoundaryMapper.js');
-            this.adsViewer = new AdSBoundaryMapper(window.hudConfig?.gridDensity || 10);
-        } else if (channelId === 'CH-04' && !this.phiCalculator) {
-            const { IntegratedInformationCalculator } = await import('/physics/information/IntegratedInformationCalculator.js');
-            this.phiCalculator = new IntegratedInformationCalculator(window.hudConfig?.gridDensity || 10);
+            while (this.pendingFrames.length > 0) {
+                this.meshViewer.updateCoordinates(this.pendingFrames.shift());
+            }
         }
     }
 
@@ -279,16 +294,29 @@ window.openTelemetryStream = function () {
             <head>
                 <title>Holographic HUD - Telemetry Stream v2.7.0</title>
                 <style>
-                    body {
+                    html, body {
+                        width: 100%;
+                        height: 100%;
                         margin: 0;
                         padding: 0;
                         background: #050808;
                         overflow: hidden;
+                        box-sizing: border-box;
+                    }
+                    *, *:before, *:after {
+                        box-sizing: inherit;
                     }
                 </style>
+                <link rel="stylesheet" href="/css/style.css">
             </head>
             <body>
-                <div id="app" style="width:100vw;height:100vh;"></div>
+                <div id="app" style="width:100%; height:100%;"></div>
+                <script src="/js/telemetryStream.js"></script>
+                <script>
+                    const appContainer = document.getElementById('app');
+                    const app = new TelemetryStreamApp();
+                    app.init(appContainer);
+                </script>
             </body>
             </html>
         `);
