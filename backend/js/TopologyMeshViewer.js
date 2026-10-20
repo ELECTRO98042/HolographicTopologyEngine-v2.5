@@ -112,4 +112,33 @@ export class TopologyMeshViewer {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height, false);
     }
+    connect(url = '/ws/telemetry') {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = url.startsWith('ws') ? url : `${protocol}//${window.location.host}${url}`;
+
+        console.log(`[CH-02] Connecting to Topology Mesh telemetry stream: ${wsUrl}`);
+        this.ws = new WebSocket(wsUrl);
+        this.ws.binaryType = 'arraybuffer';
+
+        this.ws.onopen = () => {
+            console.log("[CH-02] WebSocket connected successfully.");
+        };
+
+        this.ws.onmessage = (event) => {
+            if (event.data instanceof ArrayBuffer) {
+                const floatData = new Float32Array(event.data);
+                this.updateCoordinates(floatData);
+            }
+        };
+
+        this.ws.onerror = (error) => {
+            console.error("[CH-02] WebSocket error:", error);
+        };
+
+        this.ws.onclose = () => {
+            console.warn("[CH-02] WebSocket disconnected. Attempting reconnect in 3s...");
+            setTimeout(() => this.connect(url), 3000);
+        };
+    }
 }
+window.TopologyMeshViewer = TopologyMeshViewer;

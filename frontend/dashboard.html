@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holographic HUD - Telemetry Stream</title>
+
+    <!-- CONSOLE HUD STYLESHEET -->
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #050808;
+            overflow: hidden;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
+
+        .jog-strip {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 36px;
+            background: #050808;
+            border-top: 1.5px solid #00ffcc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        .jog-btn {
+            background: #050808;
+            border: 1.5px solid #00ffcc;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            padding: 4px 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .jog-btn.active,
+        .jog-btn:hover {
+            background: #00ffcc;
+            color: #050808;
+        }
+    </style>
+
+    <!-- DEPENDENCY SCRIPTS & LIBRARIES -->
+    <!-- External or shared graphics/math libraries required by viewers (e.g., Three.js for CH-02) -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
+
+    <!-- CHANNEL VIEWER MODULE SCRIPTS -->
+    <!-- CH-01: Oscilloscope Viewer dependency -->
+    <script type="module" src="./js/OscilloscopeViewer.js"></script>
+    <!-- CH-02: Topological Lattice 3D Viewer dependency -->
+    <script type="module" src="./js/TopologyMeshViewer.js"></script>
+    <!-- CH-03: Raw Tensor Matrix Inspector Viewer dependency -->
+    <script type="module" src="./js/RawMatrixViewer.js"></script>
+</head>
+
+<body>
+
+    <!-- MASTER HUD APPLICATION MOUNT CONTAINER -->
+    <!-- dashboard.js orchestrates all UI layout injection, panel splitting, and channel viewports inside this node -->
+    <div id="app-container" style="width: 100vw; height: 100vh; position: relative;"></div>
+
+    <!-- MAIN ORCHESTRATOR BOOTSTRAP SCRIPT -->
+    <script type="module">
+        import { TelemetryStreamApp } from './js/dashboard.js';
+
+        // Initialize the master Telemetry Stream application once the DOM has fully parsed
+        window.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('app-container');
+            if (container) {
+                window.app = new TelemetryStreamApp(container);
+            } else {
+                console.error("Critical: Master application mount container '#app-container' not found.");
+            }
+        });
+    </script>
+
+</body>
+
+</html>

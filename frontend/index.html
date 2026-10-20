@@ -361,7 +361,7 @@
                         <!-- Left Aligned: Telemetry Button (Muted/Disabled Terminal Style) -->
                         <button class="control-btn" id="telemetryStreamBtn"
                             style="width: 48%; height: 32px; background: #222; color: #00ffcc; border: 1.5px solid #00ffcc; font-family: inherit; font-size: inherit; cursor: pointer;"
-                            onclick="openTelemetryStream()">TELEMETRY STREAM</button>
+                            onclick="openChannelWindow('DASHBOARD')">TELEMETRY STREAM</button>
                     
                         <!-- Right Aligned: Snapshot Button (Dark Red Background, White Text) -->
                         <button class="control-btn accent-btn" id="snapshotBtn"
@@ -392,6 +392,7 @@
     </div>
 
     <canvas id="hudCanvas"></canvas>
+    <script type="module" src="/js/telemetryStream.js"></script>
     <script src="/js/snapshotEngine.js"></script>
     <!-- Main HUD Animation & WebSocket Script -->
     <script>
@@ -619,7 +620,7 @@
 
         ws.onclose = () => {
             console.warn("Holographic HUD WebSocket Disconnected. Reconnecting...");
-            setTimeout(() => location.reload(), 3000);
+            //setTimeout(() => location.reload(), 3000);
         };
 
         // Global Interaction State[cite: 1]
@@ -887,19 +888,7 @@
         resize();
         initControlDeck()
     </script>
-    <!-- End of Main Script -->
-    <script>
-    const collapseBtn = document.getElementById('deck-collapse-btn');
-    if (collapseBtn && !collapseBtn.dataset.listenerBound) {
-        collapseBtn.addEventListener('click', (e) => {
-            const body = document.getElementById('deck-body-content');
-            const btn = e.currentTarget;
-            const isCollapsed = body.classList.toggle('hidden');
-            btn.textContent = isCollapsed ? '+' : '−';
-        });
-        collapseBtn.dataset.listenerBound = "true";
-    }
-    </script> 
+    <!-- End of Main Script --> 
 <!-- Spatial Control Deck Logic & State Manager (v2.6.8) -->
 <script src="/js/controlDeck.js"></script>
 <!-- Snapshot bundle package with telemetry if pop-out window is present (v2.7.0) -->

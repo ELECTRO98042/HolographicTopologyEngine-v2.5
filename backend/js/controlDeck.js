@@ -44,9 +44,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const isHidden = deckBody.style.display === 'none';
             deckBody.style.display = isHidden ? 'block' : 'none';
             collapseBtn.textContent = isHidden ? '−' : '+';
-        });
+        }); 
     }
+    // Telemetry Stream Window Binding
+    window.openChannelWindow = function (channelId) {
+        let url = '/dashboard.html';
+        let windowName = 'TelemetryDashboard';
 
+        if (channelId === 'CH-01') {
+            url = '/oscilloscope.html';
+            windowName = 'OscilloscopeStream';
+        } else if (channelId === 'CH-02') {
+            url = '/topologylattice.html';
+            windowName = 'TopologyLatticeStream';
+        } else if (channelId === 'DASHBOARD') {
+            url = '/dashboard.html';
+            windowName = 'TelemetryDashboard';
+        }
+
+        const streamWindow = window.open(url, windowName, 'width=1000,height=700');
+        if (streamWindow) {
+            streamWindow.focus();
+        }
+    };
     // Dropdown Bindings
     const bindDropdown = (id, configKey, callback) => {
         const el = document.getElementById(id);
@@ -176,14 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadFile(dot, "topology_graph.dot", "text/vnd.graphviz");
         // Bind the snapshot bundle to your export action button
         const snapshotBtn = document.getElementById('snapshotBtn') || document.querySelector('button[data-action="snapshot"], .snapshot-trigger');
-
         if (snapshotBtn) {
             snapshotBtn.addEventListener('click', () => {
                 captureSpatialSnapshot();
                 console.log("v2.6.9 Multi-format snapshot bundle generated and downloaded.");
             });
         }
-
-    });
-    
+    }); 
 });
