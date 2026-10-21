@@ -61,51 +61,9 @@ export class TelemetryStreamApp {
                         </div>
 
                         <!-- CH-03 View Container (Raw Matrix / Tensor Inspector) -->
-                        <div id="view-CH-03" class="channel-view" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; overflow-y: auto; background: #050808; padding: 20px; box-sizing: border-box;">
-                        <div class="matrix-header" style="margin-bottom: 15px;">
-                            <div style="color: #00ffcc; font-family: monospace; font-size: 12px; letter-spacing: 1px; margin-bottom: 8px;">CH-03 // TENSOR MATRIX INSPECTOR // INVARIANT LAB</div>
-                            <div class="controls-toolbar" style="display: flex; gap: 10px;">
-                                <span style="color: #00ffcc; font-family: monospace; font-size: 11px; align-self: center;">FORMAT:</span>
-                                <button class="hud-btn" id="formatHexBtn">HEX</button>
-                                <button class="hud-btn" id="formatFloatBtn">FLOAT32</button>
-                                <button class="hud-btn" id="formatSciBtn">SCIENTIFIC</button>
-                            </div>
+                        <div id="view-CH-03" class="channel-view" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; overflow-y: auto; background: #050808;">
+                            <div id="tensorMatrixContainer" style="width: 100%; height: 100%; position: relative; padding: 20px;"></div>
                         </div>
-
-                        <div class="matrix-workspace" style="display: flex; gap: 20px;">
-                            <!-- Sidebar for Analytical Invariants -->
-                            <div class="diagnostics-sidebar" style="width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
-                                <div class="metric-card" style="background: rgba(0, 255, 204, 0.03); border: 1px solid rgba(0, 255, 204, 0.2); padding: 10px; font-family: monospace;">
-                                    <div class="metric-title" style="font-size: 10px; color: #94a3b8;">Frobenius Norm</div>
-                                    <div class="metric-value" id="metricNorm" style="font-size: 14px; color: #00ffcc; margin-top: 4px;">0.0000</div>
-                                </div>
-                                <div class="metric-card" style="background: rgba(0, 255, 204, 0.03); border: 1px solid rgba(0, 255, 204, 0.2); padding: 10px; font-family: monospace;">
-                                    <div class="metric-title" style="font-size: 10px; color: #94a3b8;">Matrix Trace</div>
-                                    <div class="metric-value" id="metricTrace" style="font-size: 14px; color: #00ffcc; margin-top: 4px;">0.0000</div>
-                                </div>
-                                <div class="metric-card" style="background: rgba(0, 255, 204, 0.03); border: 1px solid rgba(0, 255, 204, 0.2); padding: 10px; font-family: monospace;">
-                                    <div class="metric-title" style="font-size: 10px; color: #94a3b8;">Sparsity Density</div>
-                                    <div class="metric-value" id="metricSparsity" style="font-size: 14px; color: #00ffcc; margin-top: 4px;">0.0%</div>
-                                </div>
-                                <div class="metric-card" style="background: rgba(0, 255, 204, 0.03); border: 1px solid rgba(0, 255, 204, 0.2); padding: 10px; font-family: monospace;">
-                                    <div class="metric-title" style="font-size: 10px; color: #94a3b8;">Peak Amplitude [Min / Max]</div>
-                                    <div class="metric-value" id="metricMinMax" style="font-size: 14px; color: #00ffcc; margin-top: 4px;">0.00 / 0.00</div>
-                                </div>
-                                <div class="metric-card" style="background: rgba(0, 255, 204, 0.03); border: 1px solid rgba(0, 255, 204, 0.2); padding: 10px; font-family: monospace;">
-                                    <div class="metric-title" style="font-size: 10px; color: #94a3b8;">Spatial Z-Slice Filter</div>
-                                    <input type="range" id="zSliceRange" min="0" max="31" value="0" style="width: 100%; accent-color: #00ffcc; margin-top: 8px;">
-                                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px;">Index: <span id="zSliceVal">0</span> / 31</div>
-                                </div>
-                            </div>
-
-                            <!-- Main Matrix Grid Viewport -->
-                            <div class="matrix-viewport" style="flex-grow: 1; overflow-x: auto;">
-                                <table class="matrix-grid" id="matrix-table" style="border-collapse: collapse; font-family: monospace; font-size: 11px; color: #00ffcc; width: 100%;">
-                                    <!-- Populated dynamically via RawMatrixViewer -->
-                                </table>
-                            </div>
-                        </div>
-                    </div>
 
                         <!-- CH-04 Placeholder View Container (Extensibility ready for future modules) -->
                         <div id="view-CH-04" class="channel-view" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0;">
@@ -233,42 +191,15 @@ export class TelemetryStreamApp {
      * CH-03 Initialization Logic (Raw Matrix / Tensor Inspector View)
      */
     initChannel03(activeView) {
-        const matrixTableEl = activeView.querySelector('#matrix-table');
-        if (matrixTableEl && typeof RawMatrixViewer !== 'undefined') {
+        const container = activeView.querySelector('#tensorMatrixContainer');
+        if (container && typeof RawMatrixViewer !== 'undefined') {
             if (!this.matrixViewer) {
-                this.matrixViewer = new RawMatrixViewer(matrixTableEl, {
-                    normEl: activeView.querySelector('#metricNorm'),
-                    traceEl: activeView.querySelector('#metricTrace'),
-                    sparsityEl: activeView.querySelector('#metricSparsity'),
-                    minMaxEl: activeView.querySelector('#metricMinMax'),
-                    zValEl: activeView.querySelector('#zSliceVal')
-                });
-
-                if (typeof this.matrixViewer.connect === 'function') {
-                    this.matrixViewer.connect('/ws/telemetry');
-                }
-
-                const zSlider = activeView.querySelector('#zSliceRange');
-                if (zSlider) {
-                    zSlider.addEventListener('input', (e) => {
-                    this.matrixViewer.setZSlice(parseInt(e.target.value, 10));
-                    });
-                }
-
-                const hexBtn = activeView.querySelector('#formatHexBtn');
-                const floatBtn = activeView.querySelector('#formatFloatBtn');
-                const sciBtn = activeView.querySelector('#formatSciBtn');
-
-                if (hexBtn) hexBtn.addEventListener('click', () => this.matrixViewer.setFormat('hex'));
-                if (floatBtn) floatBtn.addEventListener('click', () => this.matrixViewer.setFormat('float'));
-                if (sciBtn) sciBtn.addEventListener('click', () => this.matrixViewer.setFormat('scientific'));
+                this.matrixViewer = new RawMatrixViewer(container);
+                this.matrixViewer.connect('/ws/telemetry');
             }
-
-            if (this.matrixViewer.currentData && typeof this.matrixViewer.renderGrid === 'function') {
-                this.matrixViewer.renderGrid(this.matrixViewer.currentData);
-            }
-
-            this.activeViewer = this.matrixViewer;
+        } else if (typeof this.matrixViewer.renderGrid === 'function' && this.matrixViewer.currentData) {
+            this.matrixViewer.renderGrid(this.matrixViewer.currentData);
         }
+        this.activeViewer = this.matrixViewer;
     }
 }
