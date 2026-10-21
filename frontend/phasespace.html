@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Space HUD - CH-04: Phase Space Constructor</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #050808;
+            overflow: hidden;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        *, *:before, *:after { box-sizing: inherit; }
+    </style>
+    <script type="module" src="/js/controlDeck.js"></script>
+    <script type="module" src="/js/OscilloscopeViewer.js"></script>
+    <script type="module" src="/js/TopologyMeshViewer.js"></script>
+    <script type="module" src="/js/RawMatrixViewer.js"></script>
+    <script type="module" src="/js/PhaseSpaceViewer.js"></script>
+</head>
+<body>
+    <div id="phaseSpaceContainer" style="width: 100vw; height: 100vh; position: relative;"></div>
+    
+    <script type="module">
+        import { PhaseSpaceViewer } from '/js/PhaseSpaceViewer.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('phaseSpaceContainer');
+            if (!container) return;
+
+            const viewer = new PhaseSpaceViewer(container);
+            window.phaseViewer = viewer;
+            viewer.connect('/ws/phasespace');
+        });
+    </script>
+</body>
+</html>

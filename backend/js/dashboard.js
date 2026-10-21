@@ -65,11 +65,9 @@ export class TelemetryStreamApp {
                             <div id="tensorMatrixContainer" style="width: 100%; height: 100%; position: relative; padding: 20px;"></div>
                         </div>
 
-                        <!-- CH-04 Placeholder View Container (Extensibility ready for future modules) -->
+                        <!-- CH-04 Phase-Space Reconstructor View Container -->
                         <div id="view-CH-04" class="channel-view" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0;">
-                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #00ffcc66; font-family: monospace; letter-spacing: 2px;">
-                                [ CH-04: RESERVED / UNIMPLEMENTED ]
-                            </div>
+                            <div id="phaseSpaceContainer" style="width: 100%; height: 100%; position: relative;"></div>
                         </div>
 
                     </div>
@@ -142,8 +140,8 @@ export class TelemetryStreamApp {
                     this.initChannel03(activeView);
                     break;
                 case 'CH-04':
-                    if (titleEl) titleEl.textContent = "CH-04: [ UNIMPLEMENTED ]";
-                    this.activeViewer = null;
+                    if (titleEl) titleEl.textContent = "CH-04: PHASE SPACE CONSTRUCTOR";
+                    this.initChannel04(activeView);
                     break;
                 default:
                     if (titleEl) titleEl.textContent = `UNKNOWN CHANNEL: ${channelId}`;
@@ -187,9 +185,7 @@ export class TelemetryStreamApp {
         }
     }
 
-    /**
-     * CH-03 Initialization Logic (Raw Matrix / Tensor Inspector View)
-     */
+    /*** CH-03 Initialization Logic (Raw Matrix / Tensor Inspector View**/
     initChannel03(activeView) {
         const container = activeView.querySelector('#tensorMatrixContainer');
         if (container && typeof RawMatrixViewer !== 'undefined') {
@@ -201,5 +197,19 @@ export class TelemetryStreamApp {
             this.matrixViewer.renderGrid(this.matrixViewer.currentData);
         }
         this.activeViewer = this.matrixViewer;
+    }
+
+    /*** CH-04 Initialization Logic (Phase Space Reconstructor View)***/
+    initChannel04(activeView) {
+        const container = activeView.querySelector('#phaseSpaceContainer');
+        if (container && typeof PhaseSpaceViewer !== 'undefined') {
+            if (!this.phaseViewer) {
+                this.phaseViewer = new PhaseSpaceViewer(container);
+                this.phaseViewer.connect('/ws/phasespace');
+            } else if (typeof this.phaseViewer.resize === 'function') {
+                this.phaseViewer.resize();
+            }
+        }
+        this.activeViewer = this.phaseViewer;
     }
 }

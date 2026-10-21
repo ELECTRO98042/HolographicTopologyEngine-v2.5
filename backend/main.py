@@ -268,6 +268,26 @@ async def websocket_matrix_endpoint(websocket: WebSocket):
             await asyncio.sleep(max(0.0, (1.0 / 60.0) - elapsed))
     except WebSocketDisconnect:
         pass
+@app.websocket("/ws/phasespace")
+async def websocket_phasespace_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("connection open")
+    try:
+        t = 0.0
+        while True:
+            t += 0.05
+            data = (np.sin(np.linspace(0, 4 * np.pi, 1024) + t) * np.cos(np.linspace(0, 4 * np.pi, 1024) * 0.5 - t * 0.8)).astype(np.float32)
+            await websocket.send_bytes(data.tobytes())
+
+            #frame_count += 1
+            #if frame_count % 30 == 0:
+                #print(f"[CH-04] Streaming phase-space frame {frame_count} ({data.nbytes} bytes)")
+
+            await asyncio.sleep(0.016) # ~30 FPS telemetry stream
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"Phase-space WebSocket error: {e}")
 
 # CH-04 Placeholder (Ready for future expansion)
 # @app.websocket("/ws/ch04")
