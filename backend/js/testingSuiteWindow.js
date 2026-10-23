@@ -8,24 +8,24 @@ class TestingSuiteWindow {
         this.activeConfig = null;
         this.telemetryBuffer = [];
         this.isCapturing = false;
+        this.isCompleted = false;
         this.frameCount = 0;
         this.metricsLog = [];
         this.lastFrameReceivedTime = 0;
         this.captureTimer = null;
         this.timeoutHandle = null;
-        this.totalDurationSeconds = 30; // Base test duration
+        this.totalDurationSeconds = 30;
 
         this.initUI();
         this.fetchConfigs();
     }
 
     initUI() {
-        // Build drawer HTML structure with all required telemetry/progress IDs
         const drawer = document.createElement("div");
         drawer.id = "testing-suite-drawer";
         drawer.className = "testing-suite-drawer hidden";
         drawer.innerHTML = `
-            <div class="drawer-header">
+            <div class="drawer-header" id="suite-drag-handle" style="cursor: move;">
                 <h3>🧪 Scientific Testing Suite</h3>
                 <button class="close-btn" id="close-drawer-btn">&times;</button>
             </div>
@@ -46,14 +46,24 @@ class TestingSuiteWindow {
                     </div>
                 </div>
 
-                <!-- Step 3: Run Data Acquisition -->
+                <!-- Step 3: Scientist Checkpoints (Transposed pre-requisite) -->
                 <div class="workflow-step">
-                    <h4>Step 3: Telemetry Acquisition</h4>
+                    <h4>Step 3: Verification Checkpoints</h4>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="chk-mesh"> Mesh / Trajectory Coherent</label>
+                        <label><input type="checkbox" id="chk-singularity"> No Matrix Singularities / NaNs</label>
+                        <label><input type="checkbox" id="chk-snr"> Telemetry SNR Valid</label>
+                    </div>
+                </div>
+
+                <!-- Step 4: Run Data Acquisition -->
+                <div class="workflow-step">
+                    <h4>Step 4: Telemetry Acquisition</h4>
                     <div id="status-descriptor" style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
                         Open Telemetry Stream
                     </div>
                     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                        <button id="btn-toggle-capture" class="btn-primary" disabled>▶ Start Telemetry Capture</button>
+                        <button id="btn-toggle-capture" class="btn-primary" disabled style="flex: 2;">▶ Start Telemetry Capture</button>
                         <button id="btn-abort-capture" class="btn-primary" style="flex: 1; background: #b91c1c; display: none;">Abort</button>
                     </div>
                     
@@ -72,21 +82,11 @@ class TestingSuiteWindow {
                     </div>
                 </div>
 
-                <!-- Step 4: Scientist Observations -->
-                <div class="workflow-step">
-                    <h4>Step 4: Scientist Checkpoints</h4>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" id="chk-mesh"> Mesh / Trajectory Coherent</label>
-                        <label><input type="checkbox" id="chk-singularity"> No Matrix Singularities / NaNs</label>
-                        <label><input type="checkbox" id="chk-snr"> Telemetry SNR Valid</label>
-                    </div>
-                </div>
-
                 <!-- Step 5: Export -->
                 <div class="workflow-step">
                     <h4>Step 5: Validation & AI Export</h4>
                     <div style="margin-bottom: 10px;">
-                        Status: <span id="experiment-status-badge" class="status-badge pending">PENDING</span>
+                        Status: <span id="experiment-status-badge" class="status-badge pending">PENDING / INCOMPLETE</span>
                     </div>
                     <button id="btn-export-ai-report" class="btn-primary" disabled>📤 Export AI Validation Report</button>
                 </div>
@@ -95,6 +95,8 @@ class TestingSuiteWindow {
 
         document.body.appendChild(drawer);
 
+        this.initDraggable(drawer);
+
         // Bind events safely
         document.getElementById("close-drawer-btn").addEventListener("click", () => this.toggleDrawer(false));
         document.getElementById("suite-preset-select").addEventListener("change", (e) => this.loadConfig(e.target.value));
@@ -102,9 +104,43 @@ class TestingSuiteWindow {
         document.getElementById("btn-abort-capture").addEventListener("click", () => this.abandonTest());
         document.getElementById("btn-export-ai-report").addEventListener("click", () => this.exportReport());
 
-        // Checkbox listeners to evaluate unlock state
         ["chk-mesh", "chk-singularity", "chk-snr"].forEach(id => {
             document.getElementById(id).addEventListener("change", () => this.evaluateStatus());
+        });
+    }
+
+    initDraggable(drawer) {
+        const header = document.getElementById("suite-drag-handle");
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        header.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+
+            const rect = drawer.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            drawer.style.right = "auto";
+            drawer.style.left = `${initialLeft}px`;
+            drawer.style.top = `${initialTop}px`;
+            drawer.style.transform = "none";
+
+            e.preventDefault();
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            drawer.style.left = `${initialLeft + dx}px`;
+            drawer.style.top = `${initialTop + dy}px`;
+        });
+
+        document.addEventListener("mouseup", () => {
+            isDragging = false;
         });
     }
 
@@ -142,11 +178,12 @@ class TestingSuiteWindow {
     }
 
     toggleCapture() {
-        // Check if telemetry feed is active (received frame within last 4 seconds)
+        if (this.isCompleted) return;
+
         const timeSinceLastFrame = Date.now() - this.lastFrameReceivedTime;
         const isTelemetryActive = this.lastFrameReceivedTime > 0 && timeSinceLastFrame < 4000;
 
-        if (!this.isCapturing && !isTelemetryActive) {
+        if (!this.isCapturing && !isTelemetryActive && this.lastFrameReceivedTime !== 0) {
             const descriptor = document.getElementById("status-descriptor");
             if (descriptor) {
                 descriptor.textContent = "Open Telemetry Stream";
@@ -163,7 +200,11 @@ class TestingSuiteWindow {
         if (this.isCapturing) {
             btn.textContent = "⏸ Pause Capture";
             btn.style.background = "#d97706";
-            if (abortBtn) abortBtn.style.display = "block";
+            if (abortBtn) {
+                abortBtn.textContent = "Abort";
+                abortBtn.style.background = "#b91c1c";
+                abortBtn.style.display = "block";
+            }
             if (descriptor) descriptor.style.color = "#38bdf8";
             this.startProgressSequence();
         } else {
@@ -182,9 +223,7 @@ class TestingSuiteWindow {
         const safetyTimeoutMs = (totalDuration + 5) * 1000;
         this.timeoutHandle = setTimeout(() => {
             if (this.isCapturing) {
-                this.toggleCapture();
-                const descriptor = document.getElementById("status-descriptor");
-                if (descriptor) descriptor.textContent = "Test completed (Timeout limit reached).";
+                this.completeTestSequence();
             }
         }, safetyTimeoutMs);
 
@@ -206,10 +245,38 @@ class TestingSuiteWindow {
             if (descriptor) descriptor.textContent = `Executing test phase... (${elapsedSeconds}s / ${totalDuration}s)`;
 
             if (elapsedSeconds >= totalDuration) {
-                this.toggleCapture();
-                if (descriptor) descriptor.textContent = "Test sequence completed successfully.";
+                this.completeTestSequence();
             }
         }, 1000);
+    }
+
+    completeTestSequence() {
+        this.isCapturing = false;
+        this.isCompleted = true;
+        this.stopProgressSequence();
+
+        const btn = document.getElementById("btn-toggle-capture");
+        const abortBtn = document.getElementById("btn-abort-capture");
+        const descriptor = document.getElementById("status-descriptor");
+
+        if (btn) {
+            btn.textContent = "Finished Capture";
+            btn.style.background = "#334155";
+            btn.disabled = true;
+        }
+
+        if (abortBtn) {
+            abortBtn.textContent = "Reset";
+            abortBtn.style.background = "#0284c7"; // Blue
+            abortBtn.style.display = "block";
+        }
+
+        if (descriptor) {
+            descriptor.textContent = "Test sequence completed successfully.";
+            descriptor.style.color = "#38bdf8";
+        }
+
+        this.evaluateStatus();
     }
 
     stopProgressSequence() {
@@ -219,6 +286,7 @@ class TestingSuiteWindow {
 
     abandonTest() {
         this.isCapturing = false;
+        this.isCompleted = false;
         this.stopProgressSequence();
         this.metricsLog = [];
         this.frameCount = 0;
@@ -234,7 +302,7 @@ class TestingSuiteWindow {
         if (timerEta) timerEta.textContent = "--:--";
         if (frameCounter) frameCounter.textContent = "0";
         if (descriptor) {
-            descriptor.textContent = "Test aborted. Environment reset.";
+            descriptor.textContent = "Test reset. Environment returned to default state.";
             descriptor.style.color = "#94a3b8";
         }
 
@@ -242,10 +310,15 @@ class TestingSuiteWindow {
         if (btn) {
             btn.textContent = "▶ Start Telemetry Capture";
             btn.style.background = "#0284c7";
+            btn.disabled = !this.activeConfig;
         }
 
         const abortBtn = document.getElementById("btn-abort-capture");
-        if (abortBtn) abortBtn.style.display = "none";
+        if (abortBtn) {
+            abortBtn.textContent = "Abort";
+            abortBtn.style.background = "#b91c1c";
+            abortBtn.style.display = "none";
+        }
 
         // Reset checkboxes
         ["chk-mesh", "chk-singularity", "chk-snr"].forEach(id => {
@@ -254,7 +327,6 @@ class TestingSuiteWindow {
         });
 
         this.evaluateStatus();
-        console.warn("[Testing Suite] Test aborted and memory buffers cleared.");
     }
 
     logTelemetryFrame(frameMeta) {
@@ -263,7 +335,6 @@ class TestingSuiteWindow {
         this.frameCount++;
         this.lastFrameReceivedTime = Date.now();
 
-        // Store lightweight scalars in memory log
         this.metricsLog.push({
             step: frameMeta.step,
             timeElapsed: frameMeta.timeElapsed,
@@ -271,16 +342,11 @@ class TestingSuiteWindow {
             loggedAt: performance.now()
         });
 
-        // Update DOM text nodes safely
         const counterElem = document.getElementById('frame-counter');
-        if (counterElem) {
-            counterElem.textContent = this.frameCount;
-        }
+        if (counterElem) counterElem.textContent = this.frameCount;
 
         const timeElem = document.getElementById('time-elapsed-display');
-        if (timeElem) {
-            timeElem.textContent = frameMeta.timeElapsed.toFixed(4);
-        }
+        if (timeElem) timeElem.textContent = frameMeta.timeElapsed.toFixed(4);
     }
 
     calculateTotalTestDuration() {
@@ -295,20 +361,23 @@ class TestingSuiteWindow {
         const meshCoherent = document.getElementById("chk-mesh")?.checked || false;
         const noSingularities = document.getElementById("chk-singularity")?.checked || false;
         const snrValid = document.getElementById("chk-snr")?.checked || false;
-        const hasFrames = this.frameCount > 0;
 
-        const allPassed = meshCoherent && noSingularities && snrValid && hasFrames;
+        const checkpointsPassed = meshCoherent && noSingularities && snrValid;
+        const isReadyForExport = checkpointsPassed && (this.isCompleted || this.frameCount > 0);
+
         const badge = document.getElementById("experiment-status-badge");
         const exportBtn = document.getElementById("btn-export-ai-report");
 
         if (badge && exportBtn) {
-            if (allPassed) {
-                badge.textContent = "PASSED";
-                badge.className = "status-badge pass";
+            if (isReadyForExport) {
+                badge.textContent = "COMPLETED!";
+                badge.style.background = "#15803d"; // Green
+                badge.style.color = "#ffffff";
                 exportBtn.disabled = false;
             } else {
                 badge.textContent = "PENDING / INCOMPLETE";
-                badge.className = "status-badge pending";
+                badge.style.background = "#d97706"; // Amber/Orange
+                badge.style.color = "#ffffff";
                 exportBtn.disabled = true;
             }
         }

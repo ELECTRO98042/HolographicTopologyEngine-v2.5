@@ -4,7 +4,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-@jax.jit
+#@jax.jit
 def compute_advanced_tensors(coords: jnp.ndarray, params: dict):
     n_nodes = coords.shape[0]
     if n_nodes < 2:
