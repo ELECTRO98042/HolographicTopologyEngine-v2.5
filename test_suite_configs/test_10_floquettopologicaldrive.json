@@ -1,0 +1,26 @@
+{
+"test_id": "floquet_topological_drive",
+"name": "Floquet Topological Phase & Spectrum",
+"category": "nonequilibrium_dynamics",
+"description": "Drives a 2D lattice system with a time-periodic Hamiltonian to engineer non-equilibrium Floquet topological phases and edge-state spectra.",
+"duration_seconds": 50.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"drive_frequency_omega": 6.283185,
+"drive_amplitude_A": 2.5,
+"lattice_dimensions": [32, 32],
+"hopping_amplitude_J": 1.0,
+"period_cycles": 50
+},
+"metrics": [
+"quasienergy_dispersion",
+"floquet_winding_number",
+"edge_state_localization_length",
+"stroboscopic_purity"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-7,
+"min_snr_db": 30.0,
+"unitary_norm_tolerance": 1e-6
+}
+}

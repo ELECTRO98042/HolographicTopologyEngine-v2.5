@@ -1,0 +1,26 @@
+{
+"test_id": "quantum_quench_thermalization",
+"name": "Quantum Quench & Many-Body Localization",
+"category": "statistical_quantum_info",
+"description": "Evaluates entanglement dynamics and inverse participation ratios after a sudden global quench across a disorder-induced metal-insulator transition.",
+"duration_seconds": 60.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"system_size_L": 16,
+"disorder_strength_W": 4.5,
+"interaction_coupling_V": 1.0,
+"quench_parameter_delta": 0.8,
+"initial_state": "neel_state"
+},
+"metrics": [
+"von_neumann_entropy",
+"half_chain_entanglement_growth",
+"inverse_participation_ratio",
+"subsystem_purity_index"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-6,
+"min_snr_db": 32.0,
+"trace_preservation_tolerance": 1e-6
+}
+}

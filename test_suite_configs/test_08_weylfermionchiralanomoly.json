@@ -1,0 +1,26 @@
+{
+"test_id": "topology_weyl_anomaly",
+"name": "Weyl Fermion Chiral Anomaly Dynamics",
+"category": "condensed_matter",
+"description": "Simulates parallel electric and magnetic fields in a Weyl semimetal to observe charge pumping between opposite-chirality nodes driven by the Adler-Bell-Jackiw anomaly.",
+"duration_seconds": 60.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"node_separation": 1.25,
+"electric_field_E": [0.0, 0.0, 1.5],
+"magnetic_field_B": [0.0, 0.0, 4.0],
+"fermi_velocity": 1.0,
+"chiral_relaxation_rate": 0.02
+},
+"metrics": [
+"chiral_charge_imbalance",
+"berry_curvature_flux",
+"anomalous_hall_conductivity",
+"spectral_flow_rate"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-6,
+"min_snr_db": 35.0,
+"charge_conservation_tolerance": 1e-5
+}
+}

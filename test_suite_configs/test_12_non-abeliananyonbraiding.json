@@ -1,0 +1,26 @@
+{
+"test_id": "anyon_braiding_fusion",
+"name": "Non-Abelian Anyon Braiding & Defect Fusion",
+"category": "topological_quantum_computing",
+"description": "Simulates worldline braiding trajectories of non-Abelian Ising topological vortices on a punctured manifold to analyze topological charge fusion channels.",
+"duration_seconds": 40.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"anyon_count": 6,
+"anyon_type": "ising_sigma",
+"braiding_path_topology": "braid_group_B6",
+"manifold_punctures": 3,
+"adiabatic_speed": 0.05
+},
+"metrics": [
+"topological_charge_invariant",
+"braiding_phase_matrix_residual",
+"defect_core_overlap_integral",
+"fusion_channel_probability"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-8,
+"min_snr_db": 42.0,
+"braiding_unitary_residual_max": 1e-5
+}
+}

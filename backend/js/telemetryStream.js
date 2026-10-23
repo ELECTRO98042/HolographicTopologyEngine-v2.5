@@ -31,6 +31,18 @@ export class TelemetryStreamApp {
         const telemetryChannel = new BroadcastChannel('holographic_telemetry_channel');
         this.ws = new WebSocket(`${protocol}://${host}/ws/telemetry`);
         this.ws.binaryType = 'arraybuffer';
+        // Initialize BroadcastChannel listener for live telemetry ingestion
+        this.telemetryChannel = new BroadcastChannel('holographic_telemetry_channel');
+        this.telemetryChannel.onmessage = (event) => {
+            if (this.isCapturing && event.data) {
+                const meta = {
+                    step: event.data.step || this.frameCount + 1,
+                    timeElapsed: event.data.timeElapsed || (performance.now() / 1000),
+                    numPoints: event.data.numPoints || event.data.pointsCount || 1000
+                };
+                this.logTelemetryFrame(meta);
+            }
+        };
 
         this.ws.onopen = () => {
             console.log("[CH-02 Telemetry] Connected to /ws/telemetry");

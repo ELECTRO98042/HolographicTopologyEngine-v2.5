@@ -1,0 +1,26 @@
+{
+"test_id": "adscft_entanglement_wedge",
+"name": "Holographic Entanglement Wedge Phase Transition",
+"category": "ads_cft_gravity",
+"description": "Tracks Ryu-Takayanagi minimal surfaces across bulk AdS5 spacetime to detect phase transitions in the entanglement wedge cross-section under boundary subregion deformation.",
+"duration_seconds": 45.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"ads_radius": 1.0,
+"boundary_subregion_A_size": [1.2, 0.8],
+"boundary_subregion_B_size": [1.2, 0.8],
+"separation_distance": 0.35,
+"bulk_mesh_resolution": 2048
+},
+"metrics": [
+"ryu_takayanagi_surface_area",
+"holographic_entanglement_entropy",
+"entanglement_wedge_cross_section",
+"mutual_information"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-8,
+"min_snr_db": 40.0,
+"area_positivity_strict": true
+}
+}

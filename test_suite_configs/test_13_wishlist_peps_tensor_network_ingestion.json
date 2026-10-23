@@ -1,0 +1,138 @@
+{
+"suite_type": "experimental_wishlist_roadmap",
+"version": "2026.4.0-experimental",
+"configs": [
+{
+"test_id": "wishlist_anyonic_circuit_decoherence",
+"name": "Fault-Tolerant Anyonic Circuit & Noise Simulator",
+"category": "topological_quantum_computing",
+"experimental_flag": true,
+"description": "Simulates Fibonacci and Majorana non-Abelian anyon braiding circuits under stochastic thermal noise and background magnetic flux fluctuation, evaluating dynamic gate fidelity and topological protection thresholds.",
+"duration_seconds": 60.0,
+"sampling_rate_hz": 10.0,
+"parameters": {
+"anyon_type": "fibonacci_tau",
+"braid_gate_depth": 128,
+"thermal_noise_temp_mK": 15.0,
+"magnetic_flux_jitter_sigma": 0.002,
+"computational_subspace_dim": 2
+},
+"metrics": [
+"topological_gate_fidelity",
+"subspace_leakage_rate",
+"braiding_phase_error_residual",
+"topological_protection_gap"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-8,
+"min_snr_db": 45.0,
+"fidelity_threshold_min": 0.999
+}
+},
+{
+"test_id": "wishlist_kibble_zurek_quench",
+"name": "Kibble-Zurek Quantum Criticality & Quench",
+"category": "nonequilibrium_dynamics",
+"experimental_flag": true,
+"description": "Executes continuous parameter sweeps across quantum critical points at variable rates to evaluate defect density scaling laws and test universality classes in high-dimensional topological matter.",
+"duration_seconds": 90.0,
+"sampling_rate_hz": 10.0,
+"parameters": {
+"critical_point_tuning_param": 1.0,
+"quench_time_tau_q": [0.1, 1.0, 10.0, 100.0],
+"universality_class": "3d_ising_topological",
+"lattice_dimension": 3,
+"spatial_grid_size": [64, 64, 64]
+},
+"metrics": [
+"topological_defect_density",
+"correlation_length_xi",
+"scaling_exponent_nu_z",
+"order_parameter_fluctuation"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-7,
+"min_snr_db": 38.0,
+"defect_count_non_negative": true
+}
+},
+{
+"test_id": "wishlist_non_hermitian_skin_effect",
+"name": "Non-Hermitian Skin Effect & Exceptional Point Tracking",
+"category": "open_quantum_systems",
+"experimental_flag": true,
+"description": "Simulates non-Hermitian dissipative Hamiltonians with complex energy spectra, mapping bulk eigenmode collapse onto boundaries and tracking exceptional point degeneracies.",
+"duration_seconds": 45.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"gain_loss_gamma": 0.85,
+"non_reciprocal_coupling_g": 1.2,
+"boundary_conditions": "open_vs_periodic",
+"lattice_sites": 100
+},
+"metrics": [
+"complex_energy_spectrum",
+"skin_localization_length",
+"exceptional_point_distance",
+"point_gap_winding_number"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-6,
+"min_snr_db": 35.0,
+"complex_eigenvalue_finite": true
+}
+},
+{
+"test_id": "wishlist_ads_black_hole_thermalization",
+"name": "Holographic Thermalization & AdS Black Hole Ingestion",
+"category": "ads_cft_gravity",
+"experimental_flag": true,
+"description": "Simulates bulk black hole horizon formation and scalar field collapse in AdS5 spacetime, tracking dual boundary CFT thermalization rates, Page curve evolution, and quantum scrambling dynamics.",
+"duration_seconds": 75.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"ads_dimension": 5,
+"scalar_infall_mass": 2.5,
+"horizon_radius_rh": 1.4,
+"boundary_cft_temperature": 0.318
+},
+"metrics": [
+"black_hole_horizon_area",
+"page_curve_entropy_evolution",
+"scrambling_lyapunov_exponent",
+"boundary_energy_momentum_tensor"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-8,
+"min_snr_db": 40.0,
+"lyapunov_bound_satisfied": true
+}
+},
+{
+"test_id": "wishlist_peps_tensor_network_ingestion",
+"name": "High-Dim Fractional Quantum Hall & PEPS Ingestion",
+"category": "strongly_correlated_matter",
+"experimental_flag": true,
+"description": "Supports direct ingestion of PEPS/MPS tensor network wavefunctions for live visualization of 2D/3D topological entanglement entropy in fractional quantum Hall states.",
+"duration_seconds": 50.0,
+"sampling_rate_hz": 5.0,
+"parameters": {
+"filling_factor_nu": "1/3",
+"bond_dimension_D": 8,
+"tensor_network_type": "PEPS_2D",
+"lattice_geometry": "kagome"
+},
+"metrics": [
+"topological_entanglement_entropy_gamma",
+"peps_transfer_matrix_spectrum",
+"chiral_edge_central_charge",
+"quantum_dimension_D_total"
+],
+"validation_bounds": {
+"max_matrix_singularity": 1e-8,
+"min_snr_db": 42.0,
+"tensor_norm_conserved": true
+}
+}
+]
+}
