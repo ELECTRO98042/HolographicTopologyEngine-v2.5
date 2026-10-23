@@ -1,0 +1,12 @@
+HolographicTopologyEngine/
+├── backend/
+│   ├── routes/
+│   │   └── test_suite_routes.py         <-- (New) API endpoints for running tests & exporting reports
+│   └── utils/
+│       └── AIAnalysisExporter.js        <-- (New) AI report generator & telemetry packager
+├── frontend/
+│   ├── css/
+│   │   └── testingSuite.css             <-- (New) Styling for top-right trigger & pop-out testing drawer
+│   └── js/
+│       └── testingSuiteWindow.js        <-- (New) 5-stage scientific testing controller module
+└── test_suite_configs/                  <-- Root test suite directory containing test_01 to test_07 JSONs

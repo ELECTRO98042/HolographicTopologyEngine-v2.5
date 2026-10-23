@@ -1,0 +1,24 @@
+{
+    "suite_id": "TEST-02-RYU-TAKAYANAGI",
+    "title": "Holographic Entanglement Entropy & Minimal Surface Surface Profile",
+    "engine_module": "holographic/RyuTakayanagiCalculator.js",
+    "telemetry_channel": "ch_holographic_entropy",
+    "target_view": "topologylattice.html",
+    "parameters": {
+        "newtonConstant": 1.0,
+        "AdSRadius": 1.0,
+        "subregionRadius": 2.5,
+        "cutoffEpsilon": 0.01,
+        "meshResolution": 32
+    },
+    "hud_display_mapping": {
+        "primary_metric": "entanglement_entropy_S",
+        "secondary_metric": "minimal_surface_area_A",
+        "telemetry_stream_rate_hz": 30,
+        "visual_indicators": {
+            "minimal_surface_hemisphere": "enabled",
+            "boundary_subregion_ring": "enabled",
+            "entropy_flux_density": "color_gradient_plasma"
+        }
+    }
+}

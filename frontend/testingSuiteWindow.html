@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Scientific Testing & Validation Suite</title>
+    <link rel="stylesheet" href="css/testingSuite.css">
+    <style>
+        body { background: #0f172a; margin: 0; padding: 15px; color: #f8fafc; }
+        .testing-suite-drawer { position: static !important; width: 100% !important; max-height: none !important; border: none !important; box-shadow: none !important; background: transparent !important; }
+    </style>
+</head>
+<body>
+    <div class="testing-suite-drawer">
+        <div class="drawer-header" style="border-radius: 6px 6px 0 0;">
+            <h3>🧪 Scientific Testing Suite</h3>
+            <button class="close-btn" onclick="window.close()">&times;</button>
+        </div>
+        <div class="drawer-content" style="padding: 16px 0;">
+            <!-- Step 1: Scenario Selection -->
+            <div class="workflow-step">
+                <h4>Step 1: Scenario Selection</h4>
+                <select id="suite-preset-select" class="form-select">
+                    <option value="">-- Select Physics Preset --</option>
+                </select>
+            </div>
+
+            <!-- Step 2: Target & Metrics -->
+            <div class="workflow-step">
+                <h4>Step 2: Experiment Specifications</h4>
+                <div id="experiment-spec-display" style="font-size: 12px; color: #38bdf8;">
+                    Select a scenario to view specs.
+                </div>
+            </div>
+
+            <!-- Step 3: Run Data Acquisition (Updated with Progress & Timer) -->
+            <div class="workflow-step">
+                <h4>Step 3: Telemetry Acquisition</h4>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-toggle-capture" class="btn-primary" disabled style="flex: 2;">▶ Start Telemetry Capture</button>
+                    <button id="btn-abort-capture" class="btn-primary" style="flex: 1; background: #b91c1c; display: none;">Abort</button>
+                </div>
+                <div id="status-descriptor" style="margin-top: 8px; font-size: 12px; color: #38bdf8;">
+                    Status: Awaiting telemetry connection...
+                </div>
+                <div style="margin-top: 10px; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8;">
+                    <span>Progress: <span id="progress-percent">0%</span></span>
+                    <span>ETA: <span id="timer-eta">--:--</span></span>
+                </div>
+                <div
+                    style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 4px; height: 6px; margin-top: 6px; overflow: hidden;">
+                    <div id="progress-bar-fill" style="width: 0%; height: 100%; background: #0284c7; transition: width 0.2s ease;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Scientist Observations -->
+            <div class="workflow-step">
+                <h4>Step 4: Scientist Checkpoints</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="chk-mesh"> Mesh / Trajectory Coherent</label>
+                    <label><input type="checkbox" id="chk-singularity"> No Matrix Singularities / NaNs</label>
+                    <label><input type="checkbox" id="chk-snr"> Telemetry SNR Valid</label>
+                </div>
+            </div>
+
+            <!-- Step 5: Export -->
+            <div class="workflow-step" style="border-bottom: none;">
+                <h4>Step 5: Validation & AI Export</h4>
+                <div style="margin-bottom: 10px;">
+                    Status: <span id="experiment-status-badge" class="status-badge pending">PENDING</span>
+                </div>
+                <button id="btn-export-ai-report" class="btn-primary" disabled>📤 Export AI Validation Report</button>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/js/testingSuiteWindow.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Instantiate testing suite drawer window
+            window.testingSuite = new TestingSuiteWindow();
+
+            // Bind trigger button
+            const triggerBtn = document.getElementById("btn-test-suite-trigger");
+            if (triggerBtn) {
+                triggerBtn.addEventListener("click", () => {
+                    window.testingSuite.toggleDrawer();
+                });
+            }
+        });
+    </script>
+    <script>
+        // Initialize standalone controller instance inside popup
+        const suite = new TestingSuiteWindow();
+
+        // Listen for live telemetry broadcasted from main window
+        const channel = new BroadcastChannel('holographic_telemetry_channel');
+        channel.onmessage = (event) => {
+            if (event.data && suite.isCapturing) {
+                suite.logTelemetryFrame(event.data);
+            }
+        };
+    </script>
+</body>
+</html>

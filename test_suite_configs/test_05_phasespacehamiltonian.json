@@ -1,0 +1,28 @@
+{
+    "suite_id": "TEST-05-PHASE-SPACE-HAMILTONIAN",
+    "title": "Non-Linear Anharmonic Oscillator Hamiltonian Phase Space Flow",
+    "engine_module": "dynamics/PhaseSpaceHamiltonianEngine.js",
+    "telemetry_channel": "ch_phase_space_flow",
+    "target_view": "phasespace.html",
+    "parameters": {
+        "mass": 1.0,
+        "omega": 1.5,
+        "lambda": 0.2,
+        "dt": 0.01,
+        "integrationMethod": "RK4"
+    },
+    "initial_conditions": {
+        "q": 1.0,
+        "p": 0.0
+    },
+    "hud_display_mapping": {
+        "primary_metric": "total_hamiltonian_energy",
+        "secondary_metric": "phase_space_radius",
+        "telemetry_stream_rate_hz": 60,
+        "visual_indicators": {
+            "phase_portrait_orbit": "enabled",
+            "energy_conservation_drift": "gauge_meter",
+            "vector_field_arrows": "enabled"
+        }
+    }
+}

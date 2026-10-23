@@ -1,0 +1,66 @@
+       [ BACKEND: JAX / PYTHON ]
+                  │
+                  ▼
+   ┌─────────────────────────────┐
+   │  JAX Tensor Matrix Calculation│ ◄── [System Physics / IIT Engine]
+   │  (64-bit Float Precision)   │
+   └──────────────┬──────────────┘
+                  │  (Zero-Copy CPU/GPU handoff via array views)
+                  ▼
+   ┌─────────────────────────────┐
+   │   Binary Frame Struct Pack  │
+   │  [Header (24B)][Payload]    │
+   └──────────────┬──────────────┘
+                  │
+                  ▼  [Raw Binary Stream (WS Frame)]
+==================│===================================================
+                  ▼  [TRANSPORT LAYER: WebSockets (binaryType = 'arraybuffer')]
+==================│===================================================
+                  │
+                  ▼
+       [ FRONTEND: JAVASCRIPT ]
+                  │
+                  ▼
+   ┌─────────────────────────────┐
+   │ WebSocket 'onmessage' Entry │
+   │   (Incoming ArrayBuffer)    │
+   └──────────────┬──────────────┘
+                  │
+                  ▼
+   ┌─────────────────────────────┐
+   │     DataView Header Parse   │ ───► [Metadata State / Timeline Sync]
+   │    (Extract Step, Time, N)  │
+   └──────────────┬──────────────┘
+                  │
+                  ▼
+   ┌─────────────────────────────┐
+   │  Float64Array Zero-Copy View│
+   │   (Shared Memory Offset)    │
+   └──────────────┬──────────────┘
+                  │
+                  ├───► [Atomic Reactive State Store]
+                  │     (Property Inspector / Curvature Analytics Metrics)
+                  │
+                  ▼
+   ┌─────────────────────────────┐
+   │ Downcast/Buffer Load Stage  │
+   │   (Float64 ──► Float32 Array)│
+   └──────────────┬──────────────┘
+                  │
+                  ▼
+   ┌─────────────────────────────┐
+   │    GPU Texture / VBO Bind   │
+   │   (WebGL/WebGPU Canvas)     │
+   └─────────────────────────────┘
+
+
+
+Key Architectural Routing Comparisons
+
+To ensure your system aligns with high-frequency standards, verify your data paths against these critical performance lanes:
+
+Architectural Junction	Target Best Practice	Anti-Pattern to Avoid	Why It Matters
+Serialization Boundary	Cast JAX memory directly via Python tobytes().	Parsing tensors into intermediate strings or nested arrays.	Strings trigger garbage collection spikes and CPU throttling.
+Network Frame Type	socket.binaryType = 'arraybuffer'	Defaulting to UTF-8 text strings.	Eliminates text decoder overhead on incoming frame arrivals.
+Frontend Extraction	Instantiating Float64Array on shared buffer byte-offsets.	slicing, copying, or cloning sub-sections of the ArrayBuffer.	Zero-copy views slice zero memory, maintaining \(\mathcal{O}(1)\) allocations.
+State Distribution	Route specific layout coordinates to the GPU, and send metadata scalars to UI state.	Passing massive raw state vectors into reactive states (e.g., raw arrays inside Vue/React reactivity).	Broad reactive trackers will attempt to deeply observe the raw 512+ element arrays, freezing the main thread.

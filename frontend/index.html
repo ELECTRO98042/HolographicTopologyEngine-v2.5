@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Holographic Topology Engine HUD v2.6.9</title>
+    <link rel="stylesheet" href="/css/style.css">
     <style>
         body {
             margin: 0;
@@ -223,11 +224,12 @@
             letter-spacing: 0.5px;
         }
     </style>
+    <link rel="stylesheet" href="css/testingSuite.css"><!--Experimentation/Testing Suite link for main HUD-->
 </head>
 
 <body>
     <!-- Primary Telemetry HUD -->
-    <div id="hud-container" style="width: 270px;">
+    <div id="hud-container" style="width: 299px;">
         <h3>HOLOGRAPHIC HUD V2.6.8</h3>
         <div class="hud-integrity">System Integrity: 100%</div>
         <div class="hud-ee">Entanglement (See): 0.0</div>
@@ -373,6 +375,13 @@
             <!--    <span class="buffer-text">[ Expansion Dock: v2.6.9 / v2.7.0 ]</span>-->
             </div>
         </div>
+    </div>
+    <!-- Add this container markup in your top-right HUD header region (right inside your navigation or control deck bar) -->
+    <div class="hud-top-right-container"
+        style="position: absolute; top: 15px; right: 20px; z-index: 1000; display: flex; align-items: center; gap: 10px;">
+        <button id="btn-test-suite-trigger" title="Launch Scientific Testing & Validation Drawer">
+            🧪 Test & Validate
+        </button>
     </div>
 
     <!-- 3D Gimbal Panel (Isolated to Bottom Right)[cite: 1] -->
@@ -895,6 +904,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- Telemetry call to telemetryStream.js call (v2.7.0) -->
 <script src="/js/telemetryStream.js"></script>
+<script src="js/testingSuiteWindow.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Instantiate testing suite drawer window
+        window.testingSuite = new TestingSuiteWindow();
+
+        // Bind trigger button
+        const triggerBtn = document.getElementById("btn-test-suite-trigger");
+        if (triggerBtn) {
+            triggerBtn.addEventListener("click", () => {
+                window.testingSuite.toggleDrawer();
+            });
+        }
+    });
+</script>
 </body>
 
 </html>
