@@ -46,28 +46,42 @@ export class TopologyMeshViewer {
         this.animate();
     }
 
-    // High-performance binary ingestion from WebSocket
-    updateCoordinates(float32Coords) {
-        console.log("Binary payload received! Length:", float32Coords.length, "Sample Z:", float32Coords[0]);
+    // High-performance zero-copy ingestion supporting both structured objects and flat arrays
+    updateCoordinates(input) {
         if (!this.geometry) return;
         this.isServerDriven = true; // Mark active stream
 
         const positionAttribute = this.geometry.attributes.position;
+        if (!positionAttribute) return;
 
-        // Fast buffer copy if dimensions match exactly
-        const count = this.gridSize * this.gridSize;
-        if (float32Coords.length === positionAttribute.array.length) {
-            positionAttribute.array.set(float32Coords);
-            positionAttribute.needsUpdate = true;
-        } else if (float32Coords.length === positionAttribute.count) {
-            // Fallback if receiving scalar/Z-displacement arrays
-            for (let i = 0; i < float32Coords.length; i++) {
-                positionAttribute.setZ(i, float32Coords[i] * 2.5);
+        let data = null;
+        if (input && typeof input === 'object' && 'gridPositions' in input) {
+            data = input.gridPositions;
+        } else if (input instanceof Float64Array || input instanceof Float32Array) {
+            data = input;
+        }
+
+        if (!data) return;
+
+        // If receiving a flat array of Z-heights (1024 values for 32x32 grid)
+        if (data.length === positionAttribute.count) {
+            for (let i = 0; i < positionAttribute.count; i++) {
+                positionAttribute.setZ(i, data[i]);
             }
-            positionAttribute.needsUpdate = true; // <-- Add this line
-        } else {
-            console.warn(`[CH-02] Payload length mismatch! Received: ${float32Coords.length}, Expected: ${count} or ${count * 3}`);
+            positionAttribute.needsUpdate = true;
             return;
+        }
+
+        // Standard full-vector grid position update
+        if (positionAttribute.array.length === data.length) {
+            positionAttribute.array.set(data);
+            positionAttribute.needsUpdate = true;
+        } else {
+            const count = Math.min(positionAttribute.count, Math.floor(data.length / 3));
+            for (let i = 0; i < count; i++) {
+                positionAttribute.setXYZ(i, data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+            }
+            positionAttribute.needsUpdate = true;
         }
     }
 
@@ -112,6 +126,7 @@ export class TopologyMeshViewer {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height, false);
     }
+
     connect(url = '/ws/telemetry') {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = url.startsWith('ws') ? url : `${protocol}//${window.location.host}${url}`;
@@ -126,7 +141,46 @@ export class TopologyMeshViewer {
 
         this.ws.onmessage = (event) => {
             if (event.data instanceof ArrayBuffer) {
-                const floatData = new Float32Array(event.data);
+                const buffer = event.data;
+
+                if (buffer.byteLength >= 24) {
+                    try {
+                        const headerView = new DataView(buffer, 0, 24);
+                        const step = headerView.getUint32(8, true);
+                        const numPoints = headerView.getUint32(16, true);
+                        console.log("Parsed Header -> byteLength:", buffer.byteLength, "step:", step, "numPoints:", numPoints);
+                        const expectedLength = 24 + (numPoints * 3 * 8 * 3) + (numPoints * 8);
+
+                        if (buffer.byteLength >= expectedLength && numPoints > 0) {
+                            const vectorByteLength = numPoints * 3 * 8;
+                            let offset = 24;
+
+                            const gridPositions = new Float64Array(buffer, offset, numPoints * 3);
+                            offset += vectorByteLength;
+                            const efieldReal = new Float64Array(buffer, offset, numPoints * 3);
+                            offset += vectorByteLength;
+                            const efieldImag = new Float64Array(buffer, offset, numPoints * 3);
+                            offset += vectorByteLength;
+                            const probDensity = new Float64Array(buffer, offset, numPoints);
+
+                            this.updateCoordinates({
+                                step,
+                                timeElapsed: 0,
+                                numPoints,
+                                gridPositions,
+                                efieldReal,
+                                efieldImag,
+                                probDensity
+                            });
+                            return;
+                        }
+                    } catch (e) {
+                        console.error("Binary parse error:", e);
+                    }
+                }
+
+                // Fallback for flat binary float streams
+                const floatData = new Float32Array(buffer);
                 this.updateCoordinates(floatData);
             }
         };

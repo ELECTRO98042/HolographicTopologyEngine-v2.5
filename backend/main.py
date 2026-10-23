@@ -10,12 +10,13 @@ import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Dict, List, Any
+from backend.routes.test_suite_routes import router as test_suite_router
 
 # Configure logger
 logger = logging.getLogger("uvicorn.error")
@@ -50,7 +51,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
+app.include_router(test_suite_router)
 # ==========================================
 # PIPELINE & CONNECTION MANAGERS
 # ==========================================
@@ -259,10 +261,10 @@ async def websocket_matrix_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            start_time = time.time()
-            tensor_frame = np.random.uniform(-2.0, 2.0, size=(32, 32)).astype(np.float32)
-            payload = serialize_coords_to_binary(tensor_frame)
-            await manager.send_binary(payload, websocket)
+            if os.path.exists("data/stream_buffer.bin"):
+                with open("data/stream_buffer.bin", "rb") as f:
+                    payload = f.read()
+                await websocket.send_bytes(payload)
             
             elapsed = time.time() - start_time
             await asyncio.sleep(max(0.0, (1.0 / 60.0) - elapsed))
